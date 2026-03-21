@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "5003:5003"
+    environment:
+      PORT: 5003
+      JWT_SECRET: ${JWT_SECRET:-change_this_in_production}
+      MONGODB_URI: ${MONGODB_URI}
+      DISABLE_AUTH: ${DISABLE_AUTH:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5003/api}
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

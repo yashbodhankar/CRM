@@ -20,14 +20,14 @@ const upload = multer({
 	limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-router.get('/', auth(), listCustomers);
-router.get('/:id', auth(), getCustomerById);
-router.post('/', auth(['admin', 'manager', 'sales', 'lead']), createCustomer);
-router.put('/:id', auth(['admin', 'manager', 'sales', 'lead']), updateCustomer);
-router.delete('/:id', auth(['admin', 'manager', 'sales', 'lead']), deleteCustomer);
-router.post('/:id/documents', auth(['admin', 'manager', 'sales', 'lead']), upload.single('file'), uploadCustomerDocument);
-router.post('/:id/interactions', auth(['admin', 'manager', 'sales', 'lead']), addCustomerInteraction);
-router.get('/:id/timeline', auth(), listCustomerTimeline);
+router.get('/', auth(['customers:read']), listCustomers);
+router.get('/:id', auth(['customers:read']), getCustomerById);
+router.post('/', auth(['customers:write']), createCustomer);
+router.put('/:id', auth(['customers:write']), updateCustomer);
+router.delete('/:id', auth(['customers:delete']), deleteCustomer);
+router.post('/:id/documents', auth(['customers:write']), upload.single('file'), uploadCustomerDocument);
+router.post('/:id/interactions', auth(['customers:write']), addCustomerInteraction);
+router.get('/:id/timeline', auth(['customers:read']), listCustomerTimeline);
 
 module.exports = router;
 

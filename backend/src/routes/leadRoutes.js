@@ -11,12 +11,12 @@ const auth = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.get('/', auth(), listLeads);
-router.post('/', auth(['admin', 'sales', 'manager', 'lead']), createLead);
-router.put('/:id', auth(['admin', 'sales', 'manager', 'lead']), updateLead);
-router.get('/:id/score', auth(['admin', 'manager', 'sales', 'lead']), getLeadScore);
-router.post('/:id/convert', auth(['admin', 'manager', 'sales', 'lead']), convertLeadToDeal);
-router.delete('/:id', auth(['admin', 'manager', 'sales', 'lead']), deleteLead);
+router.get('/', auth(['leads:read']), listLeads);
+router.post('/', auth(['leads:write']), createLead);
+router.put('/:id', auth(['leads:write']), updateLead);
+router.get('/:id/score', auth(['leads:read']), getLeadScore);
+router.post('/:id/convert', auth(['leads:write']), convertLeadToDeal);
+router.delete('/:id', auth(['leads:delete']), deleteLead);
 
 module.exports = router;
 

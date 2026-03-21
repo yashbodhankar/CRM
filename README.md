@@ -14,14 +14,18 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 - Monthly sales trend (budget x completion)
 - Customer growth trend
 - Activity logs feed
+- Advanced analytics endpoint with range/team filtering (`GET /api/analytics/advanced`)
+- Sales funnel value, team performance, and lead/deal timeline widgets
 
 3. Authentication & Roles
 - JWT auth
 - Role + permission-aware authorization middleware
+- Permission-based RBAC enforcement for leads/customers/deals/analytics/notifications APIs
 
 4. Notifications
 - In-app notifications API
 - Task reminders and workflow alerts
+- Optional SMTP email notifications via Nodemailer for every notification event
 
 5. File & Document Management
 - Customer document upload endpoint
@@ -57,7 +61,14 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 3. Create `.env`:
 	- `PORT=5000`
 	- `JWT_SECRET=your_secret`
-	- `MONGO_URI=your_mongodb_uri`
+	- `MONGODB_URI=your_mongodb_uri`
+	- Optional email config:
+		- `SMTP_HOST=smtp.yourprovider.com`
+		- `SMTP_PORT=587`
+		- `SMTP_SECURE=false`
+		- `SMTP_USER=your_user`
+		- `SMTP_PASS=your_password`
+		- `EMAIL_FROM=no-reply@yourdomain.com`
 4. `npm run dev`
 
 ### Frontend
@@ -80,8 +91,17 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 - Set env vars:
   - `PORT`
   - `JWT_SECRET`
-  - `MONGO_URI` (MongoDB Atlas recommended)
+	- `MONGODB_URI` (MongoDB Atlas recommended)
   - Optional: `DISABLE_AUTH=false`
+	- Optional SMTP vars for email notifications
+
+### One-command Cloud-like Local Stack (Docker)
+- `docker compose up --build`
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5003/api/health`
+
+### Render Blueprint
+- `render.yaml` is included for backend + static frontend provisioning.
 
 ### Database
 - Use MongoDB Atlas in production

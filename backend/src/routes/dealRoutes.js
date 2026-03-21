@@ -4,11 +4,11 @@ const { listDeals, getDealById, createDeal, updateDeal, deleteDeal } = require('
 
 const router = express.Router();
 
-router.get('/', auth(['admin', 'manager', 'sales', 'lead']), listDeals);
-router.get('/:id', auth(['admin', 'manager', 'sales', 'lead']), getDealById);
-router.post('/', auth(['admin', 'manager', 'sales', 'lead']), createDeal);
-router.put('/:id', auth(['admin', 'manager', 'sales', 'lead']), updateDeal);
-router.patch('/:id', auth(['admin', 'manager', 'sales', 'lead']), updateDeal);
-router.delete('/:id', auth(['admin', 'manager', 'sales', 'lead']), deleteDeal);
+router.get('/', auth(['deals:read']), listDeals);
+router.get('/:id', auth(['deals:read']), getDealById);
+router.post('/', auth(['deals:write']), createDeal);
+router.put('/:id', auth(['deals:write']), updateDeal);
+router.patch('/:id', auth(['deals:write']), updateDeal);
+router.delete('/:id', auth(['deals:delete']), deleteDeal);
 
 module.exports = router;

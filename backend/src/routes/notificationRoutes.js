@@ -7,7 +7,7 @@ const {
 
 const router = express.Router();
 
-router.get('/', auth(), listNotifications);
-router.patch('/:id/read', auth(), markNotificationRead);
+router.get('/', auth(['notifications:read']), listNotifications);
+router.patch('/:id/read', auth(['notifications:read']), markNotificationRead);
 
 module.exports = router;

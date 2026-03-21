@@ -1,8 +1,9 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
+import { canAccess } from '../utils/rbac';
 
-function ProtectedRoute({ children, allowedRoles }) {
+function ProtectedRoute({ children, allowedRoles, requiredPermissions }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -18,6 +19,10 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (Array.isArray(allowedRoles) && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (Array.isArray(requiredPermissions) && requiredPermissions.length > 0 && !canAccess(user.role, requiredPermissions)) {
     return <Navigate to="/" replace />;
   }
 

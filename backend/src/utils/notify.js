@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const { sendEmail, isEmailEnabled } = require('./email');
 
 let _devNotifications = [];
 
@@ -25,10 +26,31 @@ async function notifyUsers(recipients, payload) {
       .map((doc) => ({ _id: `dev_notif_${Date.now()}_${Math.random()}`, ...doc, read: false, createdAt: new Date().toISOString() }))
       .concat(_devNotifications)
       .slice(0, 500);
+    if (isEmailEnabled()) {
+      await Promise.allSettled(
+        docs.map((doc) => sendEmail({
+          to: doc.userEmail,
+          subject: `[CRM] ${doc.title}`,
+          text: `${doc.message}\n\nType: ${doc.type}`,
+          html: `<p>${doc.message}</p><p><small>Type: ${doc.type}</small></p>`
+        }))
+      );
+    }
     return;
   }
 
   await Notification.insertMany(docs);
+
+  if (isEmailEnabled()) {
+    await Promise.allSettled(
+      docs.map((doc) => sendEmail({
+        to: doc.userEmail,
+        subject: `[CRM] ${doc.title}`,
+        text: `${doc.message}\n\nType: ${doc.type}`,
+        html: `<p>${doc.message}</p><p><small>Type: ${doc.type}</small></p>`
+      }))
+    );
+  }
 }
 
 function listDevNotificationsByUser(userEmail) {

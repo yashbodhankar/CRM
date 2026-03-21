@@ -45,7 +45,7 @@ function App() {
       <Route
         path="/employees"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'lead']}>
+          <ProtectedRoute requiredPermissions={['employees:read']}>
             <Layout>
               <Employees />
             </Layout>
@@ -55,7 +55,7 @@ function App() {
       <Route
         path="/leads"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
+          <ProtectedRoute requiredPermissions={['leads:read']}>
             <Layout>
               <Leads />
             </Layout>
@@ -65,7 +65,7 @@ function App() {
       <Route
         path="/customers"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
+          <ProtectedRoute requiredPermissions={['customers:read']}>
             <Layout>
               <Customers />
             </Layout>
@@ -75,7 +75,7 @@ function App() {
       <Route
         path="/deals"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
+          <ProtectedRoute requiredPermissions={['deals:read']}>
             <Layout>
               <Deals />
             </Layout>
@@ -105,7 +105,7 @@ function App() {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'lead']}>
+          <ProtectedRoute requiredPermissions={['analytics:read']}>
             <Layout>
               <Reports />
             </Layout>
