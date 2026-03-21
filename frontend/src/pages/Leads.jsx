@@ -23,6 +23,30 @@ function Leads() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [leadScores, setLeadScores] = useState({});
+
+  const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'negotiation', 'won', 'lost', 'converted'];
+
+  const loadScores = async (leadList) => {
+    const safeList = Array.isArray(leadList) ? leadList : [];
+    if (!safeList.length) {
+      setLeadScores({});
+      return;
+    }
+
+    const entries = await Promise.all(
+      safeList.map(async (lead) => {
+        try {
+          const res = await api.get(`/leads/${lead._id}/score`);
+          return [lead._id, res.data];
+        } catch (_err) {
+          return [lead._id, null];
+        }
+      })
+    );
+
+    setLeadScores(Object.fromEntries(entries));
+  };
 
   const load = async () => {
     try {
@@ -33,8 +57,10 @@ function Leads() {
       const leadReq = api.get(`/leads?${params.toString()}`);
       const teamReq = isLead ? api.get('/employees?mineTeam=true') : Promise.resolve({ data: [] });
       const [res, teamRes] = await Promise.all([leadReq, teamReq]);
-      setLeads(res.data || []);
+      const leadList = res.data || [];
+      setLeads(leadList);
       setTeamMembers(teamRes.data || []);
+      await loadScores(leadList);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load leads');
     }
@@ -109,6 +135,16 @@ function Leads() {
       await load();
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  const handleConvertToDeal = async (id) => {
+    try {
+      await api.post(`/leads/${id}/convert`);
+      setMessage('Lead converted to deal.');
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to convert lead');
     }
   };
 
@@ -213,7 +249,7 @@ function Leads() {
               onChange={handleChange}
               className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
-              {['new', 'qualified', 'negotiation', 'won', 'lost'].map((s) => (
+              {LEAD_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -250,10 +286,12 @@ function Leads() {
         >
           <option value="">All status</option>
           <option value="new">New</option>
+          <option value="contacted">Contacted</option>
           <option value="qualified">Qualified</option>
           <option value="negotiation">Negotiation</option>
           <option value="won">Won</option>
           <option value="lost">Lost</option>
+          <option value="converted">Converted</option>
         </select>
         <select
           value={sortBy}
@@ -286,6 +324,7 @@ function Leads() {
               <th className="px-3 py-2 font-medium">Source</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Value</th>
+              <th className="px-3 py-2 font-medium">Score</th>
               <th className="px-3 py-2 font-medium">Actions</th>
               {isLead && <th className="px-3 py-2 font-medium">Lead Task Assignment</th>}
             </tr>
@@ -304,9 +343,28 @@ function Leads() {
                   {lead.expectedValue ? `₹${lead.expectedValue}` : '-'}
                 </td>
                 <td className="px-3 py-2">
+                  {leadScores[lead._id] ? (
+                    <span
+                      title={leadScores[lead._id]?.recommendation || ''}
+                      className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] ${leadScores[lead._id]?.score >= 75 ? 'bg-emerald-900/60 text-emerald-300' : leadScores[lead._id]?.score >= 45 ? 'bg-amber-900/50 text-amber-300' : 'bg-slate-800 text-slate-300'}`}
+                    >
+                      {leadScores[lead._id]?.score}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">-</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
                   <div className="flex gap-2">
                     <button onClick={() => handleEdit(lead)} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-200">Edit</button>
                     <button onClick={() => handleDelete(lead._id)} className="text-xs px-2 py-1 rounded bg-rose-700 text-white">Delete</button>
+                    <button
+                      onClick={() => handleConvertToDeal(lead._id)}
+                      disabled={lead.status === 'converted'}
+                      className={`text-xs px-2 py-1 rounded text-white ${lead.status === 'converted' ? 'bg-slate-600 cursor-not-allowed' : 'bg-emerald-700 hover:bg-emerald-600'}`}
+                    >
+                      {lead.status === 'converted' ? 'Converted' : 'Convert'}
+                    </button>
                   </div>
                 </td>
                 {isLead && (
@@ -355,7 +413,7 @@ function Leads() {
             {leads.length === 0 && (
               <tr>
                 <td
-                  colSpan={isLead ? '7' : '6'}
+                  colSpan={isLead ? '8' : '7'}
                   className="px-3 py-4 text-center text-slate-500 text-xs"
                 >
                   No leads yet. Capture your first opportunity above.

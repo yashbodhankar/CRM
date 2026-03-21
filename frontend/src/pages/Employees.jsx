@@ -84,6 +84,7 @@ function Employees() {
     setMessage('');
     setError('');
     setGeneratedLogin(null);
+
     // basic validation
     if (!form.name.trim() || !form.email.trim()) {
       setError('Name and email are required.');
@@ -181,7 +182,7 @@ function Employees() {
         <div>
           <h2 className="text-xl font-semibold text-slate-50">Employees</h2>
           <p className="text-xs text-slate-400">
-            {isLead ? 'View and manage your team members.' : 'Manage employees, leads, and customers. Login credentials are auto-generated on create.'}
+            {isLead ? 'View and manage your team members.' : 'Manage employees and team leads. Login credentials are auto-generated on create.'}
           </p>
         </div>
       </div>
@@ -264,7 +265,6 @@ function Employees() {
             >
               <option value="employee">Normal Employee</option>
               <option value="lead">Team Lead</option>
-              <option value="customer">Customer</option>
             </select>
           </div>
 
@@ -375,7 +375,7 @@ function Employees() {
                   colSpan="8"
                   className="px-3 py-4 text-center text-slate-500 text-xs"
                 >
-                  No records yet. Add your first employee, lead, or customer above.
+                  No records yet. Add your first employee or lead above.
                 </td>
               </tr>
             )}

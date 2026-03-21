@@ -4,6 +4,8 @@ import {
   Squares2X2Icon,
   UserGroupIcon,
   ArrowTrendingUpIcon,
+  BuildingOffice2Icon,
+  CurrencyDollarIcon,
   FolderIcon,
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
@@ -18,6 +20,8 @@ const links = [
   { to: '/', label: 'Dashboard', icon: Squares2X2Icon },
   { to: '/employees', label: 'Employees', icon: UserGroupIcon },
   { to: '/leads', label: 'Leads', icon: ArrowTrendingUpIcon },
+  { to: '/customers', label: 'Customers', icon: BuildingOffice2Icon },
+  { to: '/deals', label: 'Deals', icon: CurrencyDollarIcon },
   { to: '/projects', label: 'Projects', icon: FolderIcon },
   { to: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon },
   { to: '/chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
@@ -32,7 +36,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const visibleLinks = role === 'employee'
     ? links.filter((item) => ['/', '/projects', '/tasks', '/chat', '/profile'].includes(item.to))
     : role === 'lead'
-      ? links.filter((item) => ['/', '/employees', '/tasks', '/projects', '/chat', '/reports', '/profile'].includes(item.to))
+      ? links.filter((item) => ['/', '/employees', '/leads', '/customers', '/deals', '/tasks', '/projects', '/chat', '/reports', '/profile'].includes(item.to))
       : role === 'customer'
         ? links.filter((item) => ['/', '/projects', '/chat', '/profile'].includes(item.to))
       : links;

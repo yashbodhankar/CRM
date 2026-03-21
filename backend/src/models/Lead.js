@@ -9,7 +9,7 @@ const leadSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     status: {
       type: String,
-      enum: ['new', 'qualified', 'negotiation', 'won', 'lost'],
+      enum: ['new', 'contacted', 'qualified', 'negotiation', 'converted', 'won', 'lost'],
       default: 'new'
     },
     expectedValue: Number

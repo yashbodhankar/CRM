@@ -25,12 +25,29 @@ const customerSchema = new mongoose.Schema(
         }
       ],
       default: []
+    },
+    interactions: {
+      type: [
+        {
+          type: {
+            type: String,
+            enum: ['call', 'email', 'meeting', 'note'],
+            default: 'note'
+          },
+          title: { type: String, required: true, trim: true },
+          details: { type: String, trim: true },
+          happenedAt: { type: Date, default: Date.now },
+          createdByEmail: String
+        }
+      ],
+      default: []
     }
   },
   { timestamps: true }
 );
 
 customerSchema.index({ name: 1, email: 1, status: 1 });
+customerSchema.index({ 'interactions.happenedAt': -1 });
 
 module.exports = mongoose.model('Customer', customerSchema);
 

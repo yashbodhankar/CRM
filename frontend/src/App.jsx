@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import Leads from './pages/Leads';
+import Customers from './pages/Customers';
+import Deals from './pages/Deals';
 import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
 import Reports from './pages/Reports';
@@ -56,6 +58,26 @@ function App() {
           <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
             <Layout>
               <Leads />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
+            <Layout>
+              <Customers />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/deals"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'sales', 'lead']}>
+            <Layout>
+              <Deals />
             </Layout>
           </ProtectedRoute>
         }
