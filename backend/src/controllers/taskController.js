@@ -1,8 +1,71 @@
 const Task = require('../models/Task');
 const mongoose = require('mongoose');
 const Employee = require('../models/Employee');
+const Project = require('../models/Project');
+const Customer = require('../models/Customer');
 
 let _devTasks = [];
+
+function sanitizeTaskForCustomer(taskLike) {
+  const task = taskLike?.toObject ? taskLike.toObject() : taskLike;
+  if (!task) return task;
+  const {
+    assignedEmail,
+    assignedEmails,
+    assignedTo,
+    ...safe
+  } = task;
+  return safe;
+}
+
+function normalizeEmailArray(raw) {
+  if (!Array.isArray(raw)) return [];
+  return Array.from(new Set(raw.map((email) => String(email || '').trim()).filter(Boolean)));
+}
+
+function getTaskAssignedEmails(task) {
+  const fromArray = normalizeEmailArray(task?.assignedEmails || []);
+  if (fromArray.length > 0) return fromArray;
+  if (task?.assignedEmail) return [String(task.assignedEmail).trim()];
+  return [];
+}
+
+function applyTaskAssignmentPayload(payload) {
+  const hasAssignedEmails = Object.prototype.hasOwnProperty.call(payload || {}, 'assignedEmails');
+  const hasAssignedEmail = Object.prototype.hasOwnProperty.call(payload || {}, 'assignedEmail');
+  if (!hasAssignedEmails && !hasAssignedEmail) {
+    return payload;
+  }
+
+  const assignedEmails = normalizeEmailArray(payload?.assignedEmails || []);
+  const fallbackSingle = String(payload?.assignedEmail || '').trim();
+  const resolved = assignedEmails.length > 0
+    ? assignedEmails
+    : (fallbackSingle ? [fallbackSingle] : []);
+
+  payload.assignedEmails = resolved;
+  payload.assignedEmail = resolved[0] || '';
+  return payload;
+}
+
+async function getCustomerProjectIds(userEmail) {
+  if (!userEmail) return [];
+
+  if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+    const { _devProjects } = require('./projectController');
+    return (_devProjects || [])
+      .filter((p) => p.customerEmail === userEmail)
+      .map((p) => String(p._id));
+  }
+
+  const customer = await Customer.findOne({ email: userEmail }).select('_id');
+  const query = { $or: [{ customerEmail: userEmail }] };
+  if (customer?._id) {
+    query.$or.push({ client: customer._id });
+  }
+  const projects = await Project.find(query).select('_id');
+  return projects.map((p) => String(p._id));
+}
 
 function isSameDay(dateLike, compare = new Date()) {
   if (!dateLike) return false;
@@ -52,14 +115,24 @@ async function listTasks(req, res, next) {
     const daily = req.query.daily === 'true';
     const userEmail = req.user?.email;
     const isLead = req.user?.role === 'lead';
+    const isCustomer = req.user?.role === 'customer';
 
     if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
       let tasks = _devTasks.slice();
-      if (mine && userEmail) {
-        tasks = tasks.filter((t) => t.assignedEmail === userEmail);
+
+      if (isCustomer) {
+        const customerProjectIds = await getCustomerProjectIds(userEmail);
+        tasks = tasks
+          .filter((t) => t.project && customerProjectIds.includes(String(t.project)))
+          .map(sanitizeTaskForCustomer);
+      } else if (mine && userEmail) {
+        tasks = tasks.filter((t) => getTaskAssignedEmails(t).includes(userEmail));
       } else if (team && isLead && userEmail) {
         const teamEmails = await getTeamEmailsForUser(userEmail);
-        tasks = tasks.filter((t) => teamEmails.includes(t.assignedEmail));
+        tasks = tasks.filter((t) => {
+          const assigned = getTaskAssignedEmails(t);
+          return assigned.some((email) => teamEmails.includes(email)) || t.createdByLeadEmail === userEmail;
+        });
       }
       if (daily) {
         tasks = tasks.filter((t) => isSameDay(t.dailyDate || t.deadline));
@@ -68,11 +141,18 @@ async function listTasks(req, res, next) {
     }
 
     const query = {};
-    if (mine && userEmail) {
-      query.assignedEmail = userEmail;
+    if (isCustomer) {
+      const customerProjectIds = await getCustomerProjectIds(userEmail);
+      query.project = { $in: customerProjectIds };
+    } else if (mine && userEmail) {
+      query.$or = [{ assignedEmail: userEmail }, { assignedEmails: userEmail }];
     } else if (team && isLead && userEmail) {
       const teamEmails = await getTeamEmailsForUser(userEmail);
-      query.assignedEmail = { $in: teamEmails };
+      query.$or = [
+        { assignedEmail: { $in: teamEmails } },
+        { assignedEmails: { $in: teamEmails } },
+        { createdByLeadEmail: userEmail }
+      ];
     }
     if (daily) {
       const start = new Date();
@@ -85,7 +165,13 @@ async function listTasks(req, res, next) {
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email')
       .populate('project', 'name')
+      .populate('parentTask', 'title')
       .sort({ createdAt: -1 });
+
+    if (isCustomer) {
+      return res.json(tasks.map(sanitizeTaskForCustomer));
+    }
+
     res.json(tasks);
   } catch (err) {
     next(err);
@@ -96,12 +182,35 @@ async function createTask(req, res, next) {
   try {
     const isLead = req.user?.role === 'lead';
     const userEmail = req.user?.email;
-    const payload = { ...req.body };
+    const payload = applyTaskAssignmentPayload({ ...req.body });
 
     if (isLead) {
       const teamEmails = await getTeamEmailsForUser(userEmail);
-      if (!payload.assignedEmail || !teamEmails.includes(payload.assignedEmail)) {
-        return res.status(403).json({ message: 'Lead can assign tasks only to team members' });
+      if (payload.assignedEmails.length > 0) {
+        const invalid = payload.assignedEmails.filter((email) => !teamEmails.includes(email));
+        if (invalid.length > 0) {
+          return res.status(403).json({ message: 'Lead can assign tasks only to team members' });
+        }
+      }
+      payload.createdByLeadEmail = userEmail;
+
+      if (payload.parentTask) {
+        let parentTask = null;
+        if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+          parentTask = _devTasks.find((task) => String(task._id) === String(payload.parentTask));
+        } else {
+          parentTask = await Task.findById(payload.parentTask).select('title');
+        }
+        if (!parentTask) {
+          return res.status(400).json({ message: 'Parent (main) task not found' });
+        }
+        payload.mainTaskTitle = parentTask.title;
+        payload.isMainTask = false;
+        if (!payload.sourceType || payload.sourceType === 'manual') {
+          payload.sourceType = 'subtask';
+        }
+      } else {
+        payload.isMainTask = true;
       }
     }
 
@@ -124,26 +233,38 @@ async function updateTask(req, res, next) {
     const isLead = req.user?.role === 'lead';
     const userEmail = req.user?.email;
 
+    const patch = applyTaskAssignmentPayload({ ...req.body });
+
     if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
       const idx = _devTasks.findIndex(t => t._id === id);
       if (idx === -1) return res.status(404).json({ message: 'Not found' });
 
       if (isEmployee) {
-        if (_devTasks[idx].assignedEmail !== userEmail) {
+        if (!getTaskAssignedEmails(_devTasks[idx]).includes(userEmail)) {
           return res.status(403).json({ message: 'You can update only your assigned tasks' });
         }
-        _devTasks[idx] = applyEmployeeTaskUpdate(_devTasks[idx], req.body);
+        _devTasks[idx] = applyEmployeeTaskUpdate(_devTasks[idx], patch);
       } else if (isLead) {
         const teamEmails = await getTeamEmailsForUser(userEmail);
-        if (!teamEmails.includes(_devTasks[idx].assignedEmail)) {
+        const existingAssigned = getTaskAssignedEmails(_devTasks[idx]);
+        if (!existingAssigned.some((email) => teamEmails.includes(email)) && _devTasks[idx].createdByLeadEmail !== userEmail) {
           return res.status(403).json({ message: 'Lead can update only team tasks' });
         }
-        if (req.body.assignedEmail && !teamEmails.includes(req.body.assignedEmail)) {
+        const invalidAssigned = (patch.assignedEmails || []).filter((email) => !teamEmails.includes(email));
+        if (invalidAssigned.length > 0) {
           return res.status(403).json({ message: 'Lead can assign only to team members' });
         }
-        _devTasks[idx] = { ..._devTasks[idx], ...req.body };
+        if (patch.parentTask) {
+          const parentTask = _devTasks.find((task) => String(task._id) === String(patch.parentTask));
+          if (!parentTask) {
+            return res.status(400).json({ message: 'Parent (main) task not found' });
+          }
+          patch.mainTaskTitle = parentTask.title;
+          patch.isMainTask = false;
+        }
+        _devTasks[idx] = { ..._devTasks[idx], ...patch };
       } else {
-        _devTasks[idx] = { ..._devTasks[idx], ...req.body };
+        _devTasks[idx] = { ..._devTasks[idx], ...patch };
       }
 
       return res.json(_devTasks[idx]);
@@ -153,25 +274,36 @@ async function updateTask(req, res, next) {
     if (!task) return res.status(404).json({ message: 'Not found' });
 
     if (isEmployee) {
-      if (task.assignedEmail !== userEmail) {
+      if (!getTaskAssignedEmails(task).includes(userEmail)) {
         return res.status(403).json({ message: 'You can update only your assigned tasks' });
       }
-      applyEmployeeTaskUpdate(task, req.body);
+      applyEmployeeTaskUpdate(task, patch);
       await task.save();
       return res.json(task);
     }
 
     if (isLead) {
       const teamEmails = await getTeamEmailsForUser(userEmail);
-      if (!teamEmails.includes(task.assignedEmail)) {
+      const existingAssigned = getTaskAssignedEmails(task);
+      if (!existingAssigned.some((email) => teamEmails.includes(email)) && task.createdByLeadEmail !== userEmail) {
         return res.status(403).json({ message: 'Lead can update only team tasks' });
       }
-      if (req.body.assignedEmail && !teamEmails.includes(req.body.assignedEmail)) {
+      const invalidAssigned = (patch.assignedEmails || []).filter((email) => !teamEmails.includes(email));
+      if (invalidAssigned.length > 0) {
         return res.status(403).json({ message: 'Lead can assign only to team members' });
+      }
+
+      if (patch.parentTask) {
+        const parentTask = await Task.findById(patch.parentTask).select('title');
+        if (!parentTask) {
+          return res.status(400).json({ message: 'Parent (main) task not found' });
+        }
+        patch.mainTaskTitle = parentTask.title;
+        patch.isMainTask = false;
       }
     }
 
-    Object.assign(task, req.body);
+    Object.assign(task, patch);
     await task.save();
     res.json(task);
   } catch (err) {
@@ -190,7 +322,8 @@ async function deleteTask(req, res, next) {
       if (idx === -1) return res.status(404).json({ message: 'Not found' });
       if (isLead) {
         const teamEmails = await getTeamEmailsForUser(userEmail);
-        if (!teamEmails.includes(_devTasks[idx].assignedEmail)) {
+        const assigned = getTaskAssignedEmails(_devTasks[idx]);
+        if (!assigned.some((email) => teamEmails.includes(email)) && _devTasks[idx].createdByLeadEmail !== userEmail) {
           return res.status(403).json({ message: 'Lead can delete only team tasks' });
         }
       }
@@ -202,7 +335,8 @@ async function deleteTask(req, res, next) {
       const task = await Task.findById(id);
       if (!task) return res.status(404).json({ message: 'Not found' });
       const teamEmails = await getTeamEmailsForUser(userEmail);
-      if (!teamEmails.includes(task.assignedEmail)) {
+      const assigned = getTaskAssignedEmails(task);
+      if (!assigned.some((email) => teamEmails.includes(email)) && task.createdByLeadEmail !== userEmail) {
         return res.status(403).json({ message: 'Lead can delete only team tasks' });
       }
       await task.deleteOne();
@@ -217,5 +351,5 @@ async function deleteTask(req, res, next) {
   }
 }
 
-module.exports = { listTasks, createTask, updateTask, deleteTask };
+module.exports = { listTasks, createTask, updateTask, deleteTask, _devTasks };
 

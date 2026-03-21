@@ -6,13 +6,20 @@ function Tasks() {
   const { user } = useAuth();
   const isEmployee = user?.role === 'employee';
   const isLead = user?.role === 'lead';
+  const isCustomer = user?.role === 'customer';
+  const canCreateTask = !isEmployee && !isCustomer;
   const [tasks, setTasks] = useState([]);
   const [dailyTasks, setDailyTasks] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
+    project: '',
     assignedEmail: '',
+    assignedEmails: [],
+    parentTask: '',
     dailyDate: '',
     status: 'pending',
     priority: 'medium',
@@ -32,21 +39,39 @@ function Tasks() {
         ]);
         setTasks(mineRes.data || []);
         setDailyTasks(dailyRes.data || []);
+        setMyTasks(mineRes.data || []);
         setTeamMembers([]);
+        setProjects([]);
+      } else if (isCustomer) {
+        const res = await api.get('/tasks?mine=true');
+        setTasks(res.data || []);
+        setDailyTasks([]);
+        setMyTasks([]);
+        setTeamMembers([]);
+        setProjects([]);
       } else if (isLead) {
-        const [teamRes, taskRes, dailyRes] = await Promise.all([
+        const [teamRes, taskRes, dailyRes, myRes, projectRes] = await Promise.all([
           api.get('/employees?mineTeam=true'),
           api.get('/tasks?team=true'),
-          api.get('/tasks?team=true&daily=true')
+          api.get('/tasks?team=true&daily=true'),
+          api.get('/tasks?mine=true'),
+          api.get('/projects?mine=true')
         ]);
         setTeamMembers(teamRes.data || []);
         setTasks(taskRes.data || []);
         setDailyTasks(dailyRes.data || []);
+        setMyTasks(myRes.data || []);
+        setProjects(projectRes.data || []);
       } else {
-        const res = await api.get('/tasks');
-        setTasks(res.data || []);
+        const [taskRes, projectRes] = await Promise.all([
+          api.get('/tasks'),
+          api.get('/projects')
+        ]);
+        setTasks(taskRes.data || []);
         setDailyTasks([]);
+        setMyTasks([]);
         setTeamMembers([]);
+        setProjects(projectRes.data || []);
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load tasks');
@@ -60,6 +85,11 @@ function Tasks() {
   }, [isEmployee, isLead]);
 
   const handleChange = (e) => {
+    if (e.target.name === 'assignedEmails') {
+      const values = Array.from(e.target.selectedOptions || []).map((opt) => opt.value);
+      setForm((prev) => ({ ...prev, assignedEmails: values, assignedEmail: values[0] || '' }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -75,14 +105,22 @@ function Tasks() {
 
     setLoading(true);
     try {
+      const payload = { ...form };
+      if (isLead) {
+        payload.assignedEmail = (payload.assignedEmails || [])[0] || '';
+        if (!payload.parentTask) {
+          delete payload.parentTask;
+        }
+      }
+
       if (editingId) {
-        await api.put(`/tasks/${editingId}`, form);
+        await api.put(`/tasks/${editingId}`, payload);
         setMessage('Task updated successfully.');
       } else {
-        await api.post('/tasks', form);
+        await api.post('/tasks', payload);
         setMessage('Task added successfully.');
       }
-      setForm({ title: '', description: '', assignedEmail: '', dailyDate: '', status: 'pending', priority: 'medium', submitted: false });
+      setForm({ title: '', description: '', project: '', assignedEmail: '', assignedEmails: [], parentTask: '', dailyDate: '', status: 'pending', priority: 'medium', submitted: false });
       setEditingId(null);
       await load();
     } catch (err) {
@@ -98,7 +136,12 @@ function Tasks() {
     setForm({
       title: task.title || '',
       description: task.description || '',
+      project: task.project?._id || task.project || '',
       assignedEmail: task.assignedEmail || '',
+      assignedEmails: Array.isArray(task.assignedEmails)
+        ? task.assignedEmails
+        : (task.assignedEmail ? [task.assignedEmail] : []),
+      parentTask: task.parentTask?._id || task.parentTask || '',
       dailyDate: task.dailyDate ? String(task.dailyDate).slice(0, 10) : '',
       status: task.status || 'pending',
       priority: task.priority || 'medium',
@@ -109,10 +152,18 @@ function Tasks() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setForm({ title: '', description: '', assignedEmail: '', dailyDate: '', status: 'pending', priority: 'medium', submitted: false });
+    setForm({ title: '', description: '', project: '', assignedEmail: '', assignedEmails: [], parentTask: '', dailyDate: '', status: 'pending', priority: 'medium', submitted: false });
     setMessage('');
     setError('');
   };
+
+  const mainTaskOptions = tasks.filter((task) => {
+    if (!task.isMainTask) return false;
+    if (String(task._id) === String(editingId || '')) return false;
+    if (!form.project) return true;
+    const taskProjectId = task.project?._id || task.project;
+    return String(taskProjectId || '') === String(form.project || '');
+  });
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this task?')) return;
@@ -145,7 +196,7 @@ function Tasks() {
         </div>
       </div>
 
-      {!isEmployee && (
+      {canCreateTask && (
       <form
         onSubmit={handleSubmit}
         className="rounded-2xl bg-slate-900 border border-slate-800 p-4 space-y-3"
@@ -173,16 +224,32 @@ function Tasks() {
           </div>
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">
+              Project
+            </label>
+            <select
+              name="project"
+              value={form.project}
+              onChange={handleChange}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="">No project</option>
+              {projects.map((project) => (
+                <option key={project._id} value={project._id}>{project.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">
               Assigned Email
             </label>
             {isLead ? (
               <select
-                name="assignedEmail"
-                value={form.assignedEmail}
+                name="assignedEmails"
+                value={form.assignedEmails}
                 onChange={handleChange}
+                multiple
                 className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
-                <option value="">Select team member</option>
                 {teamMembers.map((m) => (
                   <option key={m._id} value={m.email}>{m.name} ({m.email})</option>
                 ))}
@@ -195,6 +262,23 @@ function Tasks() {
                 className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             )}
+            {isLead && <p className="text-[10px] text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple employees.</p>}
+          </div>
+          <div>
+            <label className="block text-[11px] text-slate-400 mb-1">
+              Main Task (optional)
+            </label>
+            <select
+              name="parentTask"
+              value={form.parentTask}
+              onChange={handleChange}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="">Create as main task</option>
+              {mainTaskOptions.map((task) => (
+                <option key={task._id} value={task._id}>{task.title}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-[11px] text-slate-400 mb-1">
@@ -313,6 +397,48 @@ function Tasks() {
         </div>
       )}
 
+      {isLead && (
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-800">
+            <h3 className="text-sm font-medium text-slate-200">Your Tasks</h3>
+          </div>
+          <table className="min-w-full text-xs">
+            <thead className="bg-slate-900/80 border-b border-slate-800">
+              <tr className="text-left text-slate-400">
+                <th className="px-3 py-2 font-medium">Title</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">Submitted</th>
+                <th className="px-3 py-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myTasks.map((task) => (
+                <tr key={task._id} className="border-t border-slate-800/80 text-slate-200">
+                  <td className="px-3 py-2">{task.title}</td>
+                  <td className="px-3 py-2 capitalize">{task.status}</td>
+                  <td className="px-3 py-2">{task.submitted ? 'Yes' : 'No'}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEmployeeAction(task._id, { submitted: !task.submitted })} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-200">
+                        {task.submitted ? 'Unsubmit' : 'Submit'}
+                      </button>
+                      <button onClick={() => handleEmployeeAction(task._id, { status: task.status === 'completed' ? 'in-progress' : 'completed' })} className="text-xs px-2 py-1 rounded bg-primary-600 text-white">
+                        {task.status === 'completed' ? 'Mark pending' : 'Mark complete'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {myTasks.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-3 py-4 text-center text-slate-500 text-xs">No tasks assigned to you.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
         <table className="min-w-full text-xs">
           <thead className="bg-slate-900/80 border-b border-slate-800">
@@ -320,10 +446,12 @@ function Tasks() {
               <th className="px-3 py-2 font-medium">Title</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Priority</th>
-              <th className="px-3 py-2 font-medium">Assigned</th>
+              <th className="px-3 py-2 font-medium">Project</th>
+              {!isCustomer && <th className="px-3 py-2 font-medium">Assigned</th>}
+              <th className="px-3 py-2 font-medium">Main Task</th>
               <th className="px-3 py-2 font-medium">Daily Date</th>
               <th className="px-3 py-2 font-medium">Submitted</th>
-              {!isEmployee && <th className="px-3 py-2 font-medium">Actions</th>}
+              {canCreateTask && <th className="px-3 py-2 font-medium">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -335,10 +463,12 @@ function Tasks() {
                 <td className="px-3 py-2">{task.title}</td>
                 <td className="px-3 py-2 capitalize">{task.status}</td>
                 <td className="px-3 py-2 capitalize">{task.priority}</td>
-                <td className="px-3 py-2">{task.assignedEmail || '-'}</td>
+                <td className="px-3 py-2">{task.project?.name || '-'}</td>
+                {!isCustomer && <td className="px-3 py-2">{Array.isArray(task.assignedEmails) && task.assignedEmails.length > 0 ? task.assignedEmails.join(', ') : (task.assignedEmail || '-')}</td>}
+                <td className="px-3 py-2">{task.mainTaskTitle || (task.isMainTask ? 'Main task' : '-')}</td>
                 <td className="px-3 py-2">{task.dailyDate ? String(task.dailyDate).slice(0, 10) : '-'}</td>
                 <td className="px-3 py-2">{task.submitted ? 'Yes' : 'No'}</td>
-                {!isEmployee && <td className="px-3 py-2">
+                {canCreateTask && <td className="px-3 py-2">
                   <div className="flex gap-2">
                     <button onClick={() => handleEdit(task)} className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-200">Edit</button>
                     <button onClick={() => handleDelete(task._id)} className="text-xs px-2 py-1 rounded bg-rose-700 text-white">Delete</button>
@@ -349,7 +479,7 @@ function Tasks() {
             {tasks.length === 0 && (
               <tr>
                 <td
-                  colSpan={isEmployee ? '6' : '7'}
+                  colSpan={isCustomer ? '7' : (isEmployee ? '8' : '9')}
                   className="px-3 py-4 text-center text-slate-500 text-xs"
                 >
                   No tasks yet. Add a task above to get started.
