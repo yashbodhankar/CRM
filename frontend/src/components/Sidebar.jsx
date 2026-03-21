@@ -11,6 +11,7 @@ import {
   UserCircleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../state/AuthContext';
+import { useTheme } from '../state/ThemeContext';
 import logo from '../../logo.png';
 
 const links = [
@@ -20,23 +21,26 @@ const links = [
   { to: '/projects', label: 'Projects', icon: FolderIcon },
   { to: '/tasks', label: 'Tasks', icon: ClipboardDocumentListIcon },
   { to: '/chat', label: 'Chat', icon: ChatBubbleLeftRightIcon },
-  { to: '/reports', label: 'Reports', icon: ChartBarIcon },
+  { to: '/reports', label: 'Analytics', icon: ChartBarIcon },
   { to: '/profile', label: 'Profile', icon: UserCircleIcon }
 ];
 
-function Sidebar() {
+function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const { user } = useAuth();
+  const { isLight } = useTheme();
   const role = user?.role;
   const visibleLinks = role === 'employee'
     ? links.filter((item) => ['/', '/projects', '/tasks', '/chat', '/profile'].includes(item.to))
     : role === 'lead'
-      ? links.filter((item) => ['/', '/employees', '/tasks', '/projects', '/chat', '/profile'].includes(item.to))
+      ? links.filter((item) => ['/', '/employees', '/tasks', '/projects', '/chat', '/reports', '/profile'].includes(item.to))
       : role === 'customer'
         ? links.filter((item) => ['/', '/projects', '/chat', '/profile'].includes(item.to))
       : links;
 
   return (
-    <aside className="w-60 bg-slate-950 border-r border-slate-800 px-4 py-6">
+    <>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`fixed md:static z-40 top-0 left-0 h-full md:h-auto w-60 border-r px-4 py-6 transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
       <div className="mb-8">
         <div className="flex items-center gap-2 text-primary-400 font-semibold text-lg">
           <img src={logo} alt="CRM Pro logo" className="h-8 w-8 rounded-xl object-cover" />
@@ -50,11 +54,14 @@ function Sidebar() {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
                 isActive
                   ? 'bg-primary-500/10 text-primary-100'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  : isLight
+                    ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`
             }
           >
@@ -63,7 +70,8 @@ function Sidebar() {
           </NavLink>
         ))}
       </nav>
-    </aside>
+      </aside>
+    </>
   );
 }
 

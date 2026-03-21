@@ -1,5 +1,33 @@
 const jwt = require('jsonwebtoken');
 
+const ROLE_PERMISSIONS = {
+  admin: ['*'],
+  manager: ['dashboard:read', 'analytics:read', 'employees:read', 'projects:write', 'tasks:write', 'leads:write', 'customers:write'],
+  sales: ['dashboard:read', 'leads:write', 'customers:read', 'tasks:read'],
+  lead: ['dashboard:read', 'analytics:read', 'employees:read', 'projects:read', 'tasks:write', 'leads:write', 'notifications:read'],
+  employee: ['dashboard:read', 'projects:read', 'tasks:read', 'tasks:update-own', 'notifications:read'],
+  customer: ['dashboard:read', 'projects:read-own', 'tasks:read-own-project', 'notifications:read']
+};
+
+function hasPermission(role, permission) {
+  const allowed = ROLE_PERMISSIONS[role] || [];
+  return allowed.includes('*') || allowed.includes(permission);
+}
+
+function isPermissionToken(token) {
+  return String(token || '').includes(':');
+}
+
+function isAuthorized(required, role) {
+  if (!Array.isArray(required) || required.length === 0) return true;
+  return required.some((item) => {
+    if (isPermissionToken(item)) {
+      return hasPermission(role, item);
+    }
+    return item === role;
+  });
+}
+
 function auth(requiredRoles = []) {
   return (req, res, next) => {
     const header = req.headers.authorization || '';
@@ -18,7 +46,7 @@ function auth(requiredRoles = []) {
         req.user = { id: 'dev', role: 'admin', email: process.env.ADMIN_EMAIL || 'admin@example.com' };
       }
 
-      if (requiredRoles.length > 0 && !requiredRoles.includes(req.user.role)) {
+      if (!isAuthorized(requiredRoles, req.user.role)) {
         return res.status(403).json({ message: 'Forbidden' });
       }
       return next();
@@ -32,10 +60,7 @@ function auth(requiredRoles = []) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
 
-      if (
-        requiredRoles.length > 0 &&
-        !requiredRoles.includes(decoded.role)
-      ) {
+      if (!isAuthorized(requiredRoles, decoded.role)) {
         return res.status(403).json({ message: 'Forbidden' });
       }
 

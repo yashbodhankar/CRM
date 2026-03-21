@@ -20,10 +20,17 @@ function Leads() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [taskDraftByLead, setTaskDraftByLead] = useState({});
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
 
   const load = async () => {
     try {
-      const leadReq = api.get('/leads');
+      const params = new URLSearchParams();
+      if (search.trim()) params.set('search', search.trim());
+      if (statusFilter) params.set('status', statusFilter);
+      if (sortBy) params.set('sort', sortBy);
+      const leadReq = api.get(`/leads?${params.toString()}`);
       const teamReq = isLead ? api.get('/employees?mineTeam=true') : Promise.resolve({ data: [] });
       const [res, teamRes] = await Promise.all([leadReq, teamReq]);
       setLeads(res.data || []);
@@ -37,7 +44,7 @@ function Leads() {
     load();
     const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
-  }, [isLead]);
+  }, [isLead, search, statusFilter, sortBy]);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -228,6 +235,47 @@ function Leads() {
           )}
         </div>
       </form>
+
+      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, phone, source"
+          className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100"
+        >
+          <option value="">All status</option>
+          <option value="new">New</option>
+          <option value="qualified">Qualified</option>
+          <option value="negotiation">Negotiation</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100"
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="value_desc">Highest value</option>
+          <option value="value_asc">Lowest value</option>
+        </select>
+        <button
+          onClick={() => {
+            setSearch('');
+            setStatusFilter('');
+            setSortBy('newest');
+          }}
+          className="rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-100 px-3 py-2"
+        >
+          Reset filters
+        </button>
+      </div>
 
       <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
         <table className="min-w-full text-xs">

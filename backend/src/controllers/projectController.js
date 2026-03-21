@@ -4,6 +4,7 @@ const Employee = require('../models/Employee');
 const Customer = require('../models/Customer');
 const Task = require('../models/Task');
 const { _devEmployees } = require('./employeeController');
+const { notifyUsers } = require('../utils/notify');
 
 let _devProjects = [];
 
@@ -534,6 +535,12 @@ async function addCustomerProjectUpdate(req, res, next) {
       });
       _devProjects[idx].customerUpdates = updates;
       await createTaskFromCustomerUpdate(_devProjects[idx], updates[0]);
+      await notifyUsers([_devProjects[idx].teamLeadEmail].filter(Boolean), {
+        title: 'Customer update received',
+        message: `New customer feedback on project ${_devProjects[idx].name || ''}`,
+        type: 'warning',
+        meta: { projectId: _devProjects[idx]._id }
+      });
       return res.json(await attachProjectMeta(_devProjects[idx]));
     }
 
@@ -559,6 +566,12 @@ async function addCustomerProjectUpdate(req, res, next) {
 
     await project.save();
     await createTaskFromCustomerUpdate(project, project.customerUpdates[0]);
+    await notifyUsers([project.teamLeadEmail].filter(Boolean), {
+      title: 'Customer update received',
+      message: `New customer feedback on project ${project.name || ''}`,
+      type: 'warning',
+      meta: { projectId: String(project._id) }
+    });
     return res.json(await attachProjectMeta(project));
   } catch (err) {
     next(err);
@@ -593,6 +606,12 @@ async function submitProjectCompletion(req, res, next) {
         customerVerifiedAt: null
       };
       _devProjects[idx].status = 'ongoing';
+      await notifyUsers(['admin@example.com', _devProjects[idx].customerEmail].filter(Boolean), {
+        title: 'Project completion submitted',
+        message: `Lead submitted ${_devProjects[idx].name || 'project'} for verification`,
+        type: 'info',
+        meta: { projectId: _devProjects[idx]._id }
+      });
       return res.json(await attachProjectMeta(_devProjects[idx]));
     }
 
@@ -621,6 +640,12 @@ async function submitProjectCompletion(req, res, next) {
     project.completion = completion;
     project.status = inferStatus(project.status, completion, project.completionReview);
     await project.save();
+    await notifyUsers(['admin@example.com', project.customerEmail].filter(Boolean), {
+      title: 'Project completion submitted',
+      message: `Lead submitted ${project.name || 'project'} for verification`,
+      type: 'info',
+      meta: { projectId: String(project._id) }
+    });
 
     return res.json(await attachProjectMeta(project));
   } catch (err) {
@@ -664,6 +689,12 @@ async function verifyProjectCompletion(req, res, next) {
       const preview = await attachProjectMeta(_devProjects[idx]);
       _devProjects[idx].completion = preview.completion;
       _devProjects[idx].status = preview.status;
+      await notifyUsers([_devProjects[idx].teamLeadEmail].filter(Boolean), {
+        title: 'Project verification update',
+        message: `${role} verified ${_devProjects[idx].name || 'project'}`,
+        type: 'success',
+        meta: { projectId: _devProjects[idx]._id, role }
+      });
       return res.json(preview);
     }
 
@@ -706,6 +737,12 @@ async function verifyProjectCompletion(req, res, next) {
     project.completion = completion;
     project.status = inferStatus(project.status, completion, review);
     await project.save();
+    await notifyUsers([project.teamLeadEmail].filter(Boolean), {
+      title: 'Project verification update',
+      message: `${role} verified ${project.name || 'project'}`,
+      type: 'success',
+      meta: { projectId: String(project._id), role }
+    });
 
     return res.json(await attachProjectMeta(project));
   } catch (err) {

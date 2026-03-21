@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
 const Customer = require('../models/Customer');
+const { notifyUsers } = require('../utils/notify');
 
 let _devTasks = [];
 
@@ -113,6 +114,9 @@ async function listTasks(req, res, next) {
     const mine = req.query.mine === 'true';
     const team = req.query.team === 'true';
     const daily = req.query.daily === 'true';
+    const search = String(req.query?.search || '').trim();
+    const status = String(req.query?.status || '').trim();
+    const sort = String(req.query?.sort || 'newest').trim();
     const userEmail = req.user?.email;
     const isLead = req.user?.role === 'lead';
     const isCustomer = req.user?.role === 'customer';
@@ -136,6 +140,22 @@ async function listTasks(req, res, next) {
       }
       if (daily) {
         tasks = tasks.filter((t) => isSameDay(t.dailyDate || t.deadline));
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        tasks = tasks.filter((t) =>
+          [t.title, t.description, t.mainTaskTitle]
+            .map((v) => String(v || '').toLowerCase())
+            .some((v) => v.includes(q))
+        );
+      }
+      if (status) {
+        tasks = tasks.filter((t) => String(t.status || '') === status);
+      }
+      if (sort === 'oldest') tasks = tasks.reverse();
+      if (sort === 'priority') {
+        const order = { high: 0, medium: 1, low: 2 };
+        tasks = tasks.sort((a, b) => (order[a.priority] ?? 99) - (order[b.priority] ?? 99));
       }
       return res.json(tasks.reverse());
     }
@@ -161,12 +181,31 @@ async function listTasks(req, res, next) {
       end.setDate(end.getDate() + 1);
       query.dailyDate = { $gte: start, $lt: end };
     }
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { mainTaskTitle: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+    if (status) {
+      query.status = status;
+    }
+
+    const sortMap = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      priority: { priority: 1, createdAt: -1 }
+    };
 
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email')
       .populate('project', 'name')
       .populate('parentTask', 'title')
-      .sort({ createdAt: -1 });
+      .sort(sortMap[sort] || sortMap.newest);
 
     if (isCustomer) {
       return res.json(tasks.map(sanitizeTaskForCustomer));
@@ -217,9 +256,21 @@ async function createTask(req, res, next) {
     if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
       const task = { _id: `dev_${Date.now()}`, ...payload, createdAt: new Date().toISOString() };
       _devTasks.push(task);
+      await notifyUsers(getTaskAssignedEmails(task), {
+        title: 'New task assigned',
+        message: payload.title || 'A new task has been assigned to you',
+        type: 'info',
+        meta: { taskId: task._id }
+      });
       return res.status(201).json(task);
     }
     const task = await Task.create(payload);
+    await notifyUsers(getTaskAssignedEmails(task), {
+      title: 'New task assigned',
+      message: task.title || 'A new task has been assigned to you',
+      type: 'info',
+      meta: { taskId: String(task._id) }
+    });
     res.status(201).json(task);
   } catch (err) {
     next(err);
@@ -279,6 +330,16 @@ async function updateTask(req, res, next) {
       }
       applyEmployeeTaskUpdate(task, patch);
       await task.save();
+
+      if (patch.submitted === true || patch.status === 'completed') {
+        await notifyUsers([task.createdByLeadEmail].filter(Boolean), {
+          title: 'Task progress update',
+          message: `${task.title} updated by ${userEmail}`,
+          type: 'success',
+          meta: { taskId: String(task._id), submitted: task.submitted, status: task.status }
+        });
+      }
+
       return res.json(task);
     }
 
