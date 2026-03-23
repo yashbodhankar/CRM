@@ -106,3 +106,9 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 ### Database
 - Use MongoDB Atlas in production
 - Add indexes for high-cardinality search fields
+
+
+
+## Developed by 
+- Yash Bodhankar
+yashbodhankar6@gmail.com

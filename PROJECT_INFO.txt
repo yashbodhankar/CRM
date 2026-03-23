@@ -1,0 +1,314 @@
+CRM Pro - Project Information
+Generated: 2026-03-23
+
+1) Project Overview
+CRM Pro is a modern CRM platform with role-based access, analytics, workflow automation,
+notifications, and document management.
+
+2) Repository Structure
+- docker-compose.yml
+- README.md
+- render.yaml
+- backend/
+  - Dockerfile
+  - package.json
+  - server.js
+  - src/
+    - config/db.js
+    - controllers/
+      aiController.js
+      analyticsController.js
+      authController.js
+      chatController.js
+      customerController.js
+      dealController.js
+      employeeController.js
+      leadController.js
+      notificationController.js
+      projectController.js
+      taskController.js
+    - middleware/
+      authMiddleware.js
+      errorMiddleware.js
+    - models/
+      ChatMessage.js
+      Customer.js
+      Deal.js
+      Employee.js
+      Lead.js
+      Notification.js
+      Project.js
+      Task.js
+      User.js
+    - routes/
+      aiRoutes.js
+      analyticsRoutes.js
+      authRoutes.js
+      chatRoutes.js
+      customerRoutes.js
+      dealRoutes.js
+      employeeRoutes.js
+      leadRoutes.js
+      notificationRoutes.js
+      projectRoutes.js
+      taskRoutes.js
+    - store/
+      devAuthStore.js
+      devCrmStore.js
+    - utils/
+      automationScheduler.js
+      credentials.js
+      email.js
+      notify.js
+      seedAdmin.js
+  - uploads/customers/
+- frontend/
+  - Dockerfile
+  - index.html
+  - package.json
+  - postcss.config.js
+  - tailwind.config.js
+  - vite.config.js
+  - src/
+    - App.jsx
+    - index.css
+    - main.jsx
+    - components/
+      Layout.jsx
+      Navbar.jsx
+      ProtectedRoute.jsx
+      Sidebar.jsx
+    - pages/
+      Chat.jsx
+      CustomerDashboard.jsx
+      Customers.jsx
+      Dashboard.jsx
+      Deals.jsx
+      EmployeeDashboard.jsx
+      Employees.jsx
+      LeadDashboard.jsx
+      Leads.jsx
+      Login.jsx
+      Profile.jsx
+      Projects.jsx
+      Reports.jsx
+      Tasks.jsx
+    - state/
+      AuthContext.jsx
+      ThemeContext.jsx
+    - utils/
+      api.js
+      rbac.js
+
+3) Main Features (from README)
+- UI/UX: theme toggle, responsive navigation, KPI cards, dashboard charts.
+- Analytics: conversion, monthly trend, growth trend, activity feed, advanced analytics endpoint.
+- Auth and Roles: JWT auth plus permission-based RBAC.
+- Notifications: in-app notifications and optional email notifications.
+- File Management: customer document upload and metadata storage.
+- Automation: reminders, stale lead progression, round-robin lead assignment.
+- Search/Filters: leads, customers, tasks.
+- Deployment Ready: Docker support, API base URL config, Render blueprint.
+- AI Hook: lead scoring endpoint.
+
+4) Backend Runtime Details
+- Default backend dev port: 5000 (server.js)
+- Docker backend port mapping: 5003:5003
+- Health endpoint: /api/health
+- In dev mode, DISABLE_AUTH=true skips DB connect and admin seed.
+
+5) Important API Route Prefixes
+- /api/auth
+- /api/employees
+- /api/leads
+- /api/projects
+- /api/tasks
+- /api/customers
+- /api/deals
+- /api/chat
+- /api/ai
+- /api/notifications
+- /api/analytics
+
+6) Local Run (Non-Docker)
+Backend:
+1. cd backend
+2. npm install
+3. Create .env with at least:
+   - PORT=5000 (or 5003)
+   - JWT_SECRET=your_secret
+   - MONGODB_URI=your_mongodb_uri
+4. npm run dev
+
+Frontend:
+1. cd frontend
+2. npm install
+3. Optional .env:
+   - VITE_API_URL=http://localhost:5000/api
+4. npm run dev
+
+7) Local Run (Docker)
+1. docker compose up --build
+2. Frontend: http://localhost:3000
+3. Backend health: http://localhost:5003/api/health
+
+8) Deployment Notes
+- Frontend build command: npm run build
+- Frontend output: dist
+- Backend start command: node server.js
+- Recommended production DB: MongoDB Atlas
+- Render blueprint exists: render.yaml
+
+9) Current Local Start Status (this session)
+- Frontend running on: http://localhost:3000
+- Backend running on: http://localhost:5003/api/health
+- Docker command unavailable in current terminal environment, so services were started via npm.
+
+10) How the Project Works (End-to-End)
+- Frontend (React + Vite) handles UI, route protection, and user state from JWT token.
+- Backend (Express) exposes REST APIs under /api/* and enforces auth/permissions per route.
+- Database layer uses MongoDB in normal mode.
+- Dev offline mode: when DISABLE_AUTH=true, backend can run without Mongo and uses in-memory dev stores.
+- Scheduler (node-cron) runs hourly for reminders and lead auto-progression.
+
+Request lifecycle:
+1. User logs in from frontend (/login).
+2. Backend validates credentials and returns JWT token.
+3. Frontend stores token in localStorage and decodes role/name/email for session state.
+4. ProtectedRoute checks route permissions/roles before rendering a page.
+5. API calls include Bearer token, backend middleware validates token and authorizes action.
+6. Controller performs logic (CRUD, conversion, analytics, notifications), then response is returned.
+
+11) User Roles and Access Given
+System roles:
+- admin
+- manager
+- sales
+- lead
+- employee
+- customer
+
+Permission model:
+- admin: full access (*) to all modules.
+- manager: dashboard, analytics, employees (read/write), projects (read/write), tasks (read/write), leads/customers/deals (read/write/delete), notifications read.
+- sales: dashboard, leads/customers/deals (read/write/delete), tasks read, notifications read.
+- lead: dashboard, analytics, employees (read/write), projects read, tasks (read/write), leads/customers/deals (read/write/delete), notifications read.
+- employee: dashboard read, projects read, tasks read and update own, notifications read.
+- customer: dashboard read, own project read access, own-project task read access, notifications read.
+
+Main backend access rules by module:
+- Auth users management (/api/auth/users, reset-password): admin only.
+- Analytics (/api/analytics, /advanced): analytics:read permission.
+- Leads (/api/leads): leads:read/write/delete permissions.
+- Customers (/api/customers): customers:read/write/delete permissions.
+- Deals (/api/deals): deals:read/write/delete permissions.
+- Notifications (/api/notifications): notifications:read permission.
+- Employees (/api/employees): create admin or manager; update admin/manager/lead; delete admin only.
+- Projects (/api/projects):
+  - create/update/delete: admin or manager
+  - customer update: customer
+  - submit completion: lead
+  - verify completion: admin or customer
+  - milestone/subtask completion updates: admin/manager/lead
+- Tasks (/api/tasks):
+  - create/delete: admin/manager/lead
+  - update: admin/manager/lead/employee
+- AI tools (/api/ai): admin/manager/sales/lead.
+
+12) Business Flow of the CRM
+Lead-to-Revenue flow:
+1. Lead is created (manual or auto-assigned to active sales/lead employee in round-robin).
+2. Lead is qualified and tracked in pipeline statuses.
+3. Lead scoring endpoint evaluates priority (0-100) with recommendation.
+4. Conversion endpoint turns a lead into a deal and marks lead as converted.
+5. If customer record does not exist, system creates customer profile.
+6. Deal then moves through stages: new -> qualified -> proposal -> negotiation -> converted -> won/lost.
+
+Customer management flow:
+1. Customer profile is created with contact/company/status data.
+2. System can auto-generate customer login credentials (temporary password) when needed.
+3. Team logs interactions (call/email/meeting/note) and uploads customer documents.
+4. Timeline endpoint merges interactions + document events in reverse chronological order.
+
+Project and task delivery flow:
+1. Managers/admin create projects and assign progress structure.
+2. Tasks are created and assigned to team members.
+3. Leads/admin/managers update milestone/subtask completion.
+4. Lead can submit project completion.
+5. Admin/customer verifies completion.
+6. Customer can post project-specific updates.
+
+13) Automation and Notifications Flow
+- Hourly automation job checks tasks with deadlines in the next 24 hours and sends reminder notifications.
+- Hourly automation promotes stale leads (status=new for over 7 days) to qualified.
+- Important actions (new lead, lead updates, lead conversion, etc.) trigger in-app notifications.
+- Email sending is optional and controlled by SMTP environment variables.
+
+14) Frontend Navigation and Page Access Flow
+- Login required for all app routes except /login.
+- Role-aware dashboards:
+  - employee -> EmployeeDashboard
+  - lead -> LeadDashboard
+  - customer -> CustomerDashboard
+  - others -> main Dashboard
+- Page guards:
+  - /employees needs employees:read
+  - /leads needs leads:read
+  - /customers needs customers:read
+  - /deals needs deals:read
+  - /reports needs analytics:read
+  - /projects allowed roles: admin, manager, lead, employee, customer
+  - /tasks allowed roles: admin, manager, lead, employee
+
+15) Functionalities Added (Detailed)
+Authentication and security:
+- JWT login and token-based API access.
+- Role and permission checks at frontend and backend.
+- Dev mode bypass with DISABLE_AUTH=true for offline/local testing.
+
+Lead management:
+- Lead CRUD with search, status filter, and sorting.
+- Lead score endpoint for priority/recommendation.
+- Auto-assignment (round-robin) to active sales/lead employees.
+- Lead conversion endpoint that creates/updates deal and marks lead converted.
+
+Deal pipeline:
+- Deal CRUD with search, stage filter, and sorting.
+- Standardized deal stages: new, qualified, proposal, negotiation, converted, won, lost.
+- Deal ownership tracking via ownerEmail.
+
+Customer management:
+- Customer CRUD with search, status/activity/date filters and sorting.
+- Customer document uploads (stored under uploads/customers).
+- Customer interaction logging (call/email/meeting/note).
+- Customer timeline endpoint combining interactions + documents.
+- Auto customer login account creation with temporary password on customer creation.
+
+Project and task operations:
+- Project CRUD with role-based actions for customer updates and completion lifecycle.
+- Milestone and subtask completion tracking endpoints.
+- Task CRUD with role-scoped create/update/delete permissions.
+
+Analytics and reporting:
+- Analytics endpoints for dashboard data and advanced filtered analytics.
+- Conversion, sales trend, growth trend, funnel/team timeline style metrics.
+
+Notifications and communication:
+- In-app notifications API (list/read).
+- Event notifications for CRM actions (lead created/updated/converted and more).
+- Optional SMTP email sending support.
+
+Automation:
+- Hourly reminder automation for upcoming task deadlines.
+- Automatic stale lead progression from new to qualified after 7 days.
+
+Frontend experience:
+- Responsive layout with sidebar/mobile navigation behavior.
+- Route-level protected pages using role/permission gates.
+- Role-aware dashboard switching by logged-in user role.
+- Theme support and modern dashboard pages (reports, chat, profile, entity modules).
+
+Deployment and operability:
+- Dockerized backend/frontend with compose support.
+- Render blueprint available (render.yaml).
+- Health endpoint for uptime checks.
