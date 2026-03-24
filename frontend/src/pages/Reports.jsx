@@ -35,35 +35,50 @@ function Reports() {
   const [team, setTeam] = useState('');
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
+        setSyncing(true);
         const [basicRes, advancedRes, employeeRes] = await Promise.all([
           api.get('/analytics'),
           api.get(`/analytics/advanced?range=${encodeURIComponent(range)}${team ? `&team=${encodeURIComponent(team)}` : ''}`),
           api.get('/employees').catch(() => ({ data: [] }))
         ]);
         if (mounted) {
+          setError('');
           setData(basicRes.data);
           setAdvanced(advancedRes.data);
+          setLastUpdated(new Date());
           const uniqueTeams = Array.from(
             new Set((employeeRes.data || []).map((e) => e.teamName).filter(Boolean))
           ).sort((a, b) => a.localeCompare(b));
           setTeams(uniqueTeams);
         }
       } catch (err) {
-        if (mounted) setError(err?.response?.data?.message || 'Failed to load analytics');
+        if (mounted && !data) setError(err?.response?.data?.message || 'Failed to load analytics');
       } finally {
+        if (mounted) setSyncing(false);
         if (mounted) setLoading(false);
       }
     }
     load();
-    const timer = setInterval(load, 15000);
+
+    const onVisibleRefresh = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    window.addEventListener('focus', onVisibleRefresh);
+    document.addEventListener('visibilitychange', onVisibleRefresh);
+
+    const timer = setInterval(load, 5000);
     return () => {
       mounted = false;
+      window.removeEventListener('focus', onVisibleRefresh);
+      document.removeEventListener('visibilitychange', onVisibleRefresh);
       clearInterval(timer);
     };
   }, [range, team]);
@@ -84,6 +99,9 @@ function Reports() {
         <h2 className="text-xl font-semibold text-slate-50">Analytics Dashboard</h2>
         <p className="text-xs text-slate-400">
           Live CRM insights: conversion, growth, revenue, and activity.
+        </p>
+        <p className="text-[11px] text-slate-500 mt-1">
+          {syncing ? 'Syncing...' : 'Synced'}{lastUpdated ? ` - ${lastUpdated.toLocaleTimeString()}` : ''}
         </p>
       </div>
 

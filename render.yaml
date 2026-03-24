@@ -5,22 +5,21 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /api/health
     plan: free
     envVars:
-      - key: PORT
-        value: 5003
       - key: JWT_SECRET
         generateValue: true
       - key: MONGODB_URI
         sync: false
       - key: DISABLE_AUTH
-        value: false
+        value: "false"
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
-        value: 587
+        value: "587"
       - key: SMTP_SECURE
-        value: false
+        value: "false"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
@@ -33,6 +32,10 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
         value: https://crm-pro-backend.onrender.com/api
