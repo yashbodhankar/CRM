@@ -25,16 +25,41 @@ const { startAutomationScheduler } = require('./src/utils/automationScheduler');
 
 const app = express();
 
-app.use(cors());
+function parseCorsOrigins(raw) {
+  return String(raw || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+app.use(cors({
+  origin(origin, callback) {
+    // Allow server-to-server requests and local tools without Origin header.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS policy: Origin not allowed'));
+  }
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
-const uploadRoot = path.join(process.cwd(), 'uploads');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+const uploadRoot = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(process.cwd(), 'uploads');
 const customerUploadDir = path.join(uploadRoot, 'customers');
 if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot);
 if (!fs.existsSync(customerUploadDir)) fs.mkdirSync(customerUploadDir, { recursive: true });
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(uploadRoot));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -59,6 +84,13 @@ const PORT = process.env.PORT || 5000;
 
 async function start() {
   try {
+    if (process.env.NODE_ENV === 'production' && process.env.DISABLE_AUTH !== 'true') {
+      const secret = String(process.env.JWT_SECRET || '');
+      if (!secret || secret === 'change_this_in_production' || secret.length < 32) {
+        throw new Error('JWT_SECRET must be set to a strong value (>= 32 chars) in production');
+      }
+    }
+
     if (process.env.DISABLE_AUTH === 'true') {
       console.log('⚠️ DISABLE_AUTH=true — skipping DB connect and seeding (dev mode)');
     } else {

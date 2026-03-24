@@ -15,8 +15,12 @@ const auth = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+const uploadRoot = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(process.cwd(), 'uploads');
+
 const upload = multer({
-	dest: path.join(process.cwd(), 'uploads', 'customers'),
+	dest: path.join(uploadRoot, 'customers'),
 	limits: { fileSize: 10 * 1024 * 1024 }
 });
 

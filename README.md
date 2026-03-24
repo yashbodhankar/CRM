@@ -92,8 +92,16 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
   - `PORT`
   - `JWT_SECRET`
 	- `MONGODB_URI` (MongoDB Atlas recommended)
+	- `CORS_ORIGIN` (comma-separated allowed frontend origins, e.g. `https://crm-pro-frontend.onrender.com`)
+	- `UPLOADS_DIR` (for persistent files, e.g. `/var/data/uploads` on Render)
   - Optional: `DISABLE_AUTH=false`
 	- Optional SMTP vars for email notifications
+
+### Render Production Notes
+- Backend service uses `healthCheckPath: /api/health`.
+- Frontend static service includes an SPA rewrite to `/index.html`.
+- Add a persistent disk for backend uploads and mount to `/var/data`; `UPLOADS_DIR` should be `/var/data/uploads`.
+- Use a strong `JWT_SECRET` (32+ characters) in production.
 
 ### One-command Cloud-like Local Stack (Docker)
 - `docker compose up --build`
