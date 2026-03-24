@@ -24,6 +24,9 @@ const seedAdmin = require('./src/utils/seedAdmin');
 const { startAutomationScheduler } = require('./src/utils/automationScheduler');
 
 const app = express();
+app.get("/", (req, res) => {
+  res.send("CRM Backend is Running 🚀");
+});
 
 function parseCorsOrigins(raw) {
   return String(raw || '')
