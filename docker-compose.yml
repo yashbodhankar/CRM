@@ -23,7 +23,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:5003/api}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5003}
     ports:
       - "3000:80"
     depends_on:

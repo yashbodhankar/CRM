@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-ARG VITE_API_URL=http://localhost:5003/api
+ARG VITE_API_URL=http://localhost:5003
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 

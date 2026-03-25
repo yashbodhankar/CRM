@@ -25,8 +25,9 @@ function Customers() {
   const [generatedLogin, setGeneratedLogin] = useState(null);
 
   const uploadsBase = useMemo(() => {
-    const apiBase = api.defaults.baseURL || import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
-    return apiBase.replace(/\/api$/, '');
+    const apiBase = api.defaults.baseURL
+      || `${String(import.meta.env.VITE_API_URL || 'http://localhost:5003').replace(/\/$/, '')}/api`;
+    return apiBase.replace(/\/api\/?$/, '');
   }, []);
 
   async function loadCustomers() {

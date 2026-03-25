@@ -11,11 +11,12 @@ function Navbar({ sidebarOpen, setSidebarOpen }) {
 
   useEffect(() => {
     let mounted = true;
+    const API = (import.meta.env.VITE_API_URL || 'http://localhost:5003').replace(/\/$/, '');
     async function loadNotifications() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/notifications?limit=10`, {
+        const res = await fetch(`${API}/api/notifications?limit=10`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) return;
