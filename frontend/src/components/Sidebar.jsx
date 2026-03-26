@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../state/AuthContext';
 import { useTheme } from '../state/ThemeContext';
-import logo from '../../logo.png';
+import logo from '../../Logo.png';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: Squares2X2Icon },
