@@ -15,9 +15,12 @@ async function register(req, res, next) {
       return res.status(503).json({ message: 'Database unavailable' });
     }
     const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email and password are required' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
+
+    const derivedName = String(name || '')
+      .trim() || String(email).split('@')[0] || 'User';
 
     const existing = await User.findOne({ email });
     if (existing) {
@@ -25,7 +28,7 @@ async function register(req, res, next) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed, role });
+    const user = await User.create({ name: derivedName, email, password: hashed, role });
 
     res.status(201).json({
       id: user._id,
