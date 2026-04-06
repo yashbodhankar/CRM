@@ -13,7 +13,7 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: CORS_ORIGIN
-        value: https://crm-pro-frontend.onrender.com
+        value: https://crm-pro-frontend.onrender.com,http://localhost:3000
       - key: UPLOADS_DIR
         value: /var/data/uploads
       - key: DISABLE_AUTH
