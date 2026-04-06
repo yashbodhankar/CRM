@@ -31,7 +31,7 @@ app.get("/", (req, res) => {
 function parseCorsOrigins(raw) {
   return String(raw || '')
     .split(',')
-    .map((item) => item.trim())
+    .map((item) => item.trim().replace(/\/$/, '').toLowerCase())
     .filter(Boolean);
 }
 
@@ -40,8 +40,9 @@ app.use(cors({
   origin(origin, callback) {
     // Allow server-to-server requests and local tools without Origin header.
     if (!origin) return callback(null, true);
+    const normalizedOrigin = String(origin).replace(/\/$/, '').toLowerCase();
     if (allowedOrigins.length === 0) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
     return callback(new Error('CORS policy: Origin not allowed'));
   }
 }));
