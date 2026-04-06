@@ -9,6 +9,32 @@ const {
 } = require('../store/devAuthStore');
 const { generateTempPassword } = require('../utils/credentials');
 
+async function ensureDevSelfUser(reqUser) {
+  const existing = _devUsers.find(
+    (u) => u.id === reqUser?.id || u.email === reqUser?.email
+  );
+  if (existing) return existing;
+
+  const adminEmail = String(process.env.ADMIN_EMAIL || '').toLowerCase();
+  const reqEmail = String(reqUser?.email || '').toLowerCase();
+  const canBootstrapAdmin = Boolean(adminEmail) && reqEmail === adminEmail && Boolean(process.env.ADMIN_PASSWORD);
+
+  if (canBootstrapAdmin) {
+    await upsertDevUser({
+      name: reqUser?.name || process.env.ADMIN_NAME || 'Dev Admin',
+      email: reqUser?.email,
+      password: process.env.ADMIN_PASSWORD,
+      role: reqUser?.role || process.env.ADMIN_ROLE || 'admin'
+    });
+
+    return _devUsers.find(
+      (u) => u.id === reqUser?.id || String(u.email || '').toLowerCase() === reqEmail
+    );
+  }
+
+  return null;
+}
+
 async function register(req, res, next) {
   try {
     if (mongoose.connection.readyState !== 1) {
@@ -200,5 +226,182 @@ async function resetUserPassword(req, res, next) {
   }
 }
 
-module.exports = { register, login, listUsers, resetUserPassword };
+async function getMyProfile(req, res, next) {
+  try {
+    const fallbackProfile = {
+      id: req.user?.id,
+      name: req.user?.name || '',
+      email: req.user?.email || '',
+      role: req.user?.role || 'employee',
+      source: process.env.DISABLE_AUTH === 'true' ? 'dev' : 'token'
+    };
+
+    if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+      const devUser = await ensureDevSelfUser(req.user);
+
+      if (!devUser) {
+        return res.json(fallbackProfile);
+      }
+
+      return res.json({
+        id: devUser.id,
+        name: devUser.name,
+        email: devUser.email,
+        role: devUser.role,
+        passwordConfigured: Boolean(devUser.password),
+        source: 'dev'
+      });
+    }
+
+    const user = await User.findById(req.user?.id).select('_id name email role createdAt updatedAt');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.json({
+      id: String(user._id),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      passwordConfigured: true,
+      source: 'db'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateMyProfile(req, res, next) {
+  try {
+    const nextName = String(req.body?.name || '').trim();
+    const nextEmail = String(req.body?.email || '').trim().toLowerCase();
+
+    if (!nextName) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+    if (!nextEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+      const devUser = await ensureDevSelfUser(req.user);
+      const index = _devUsers.findIndex((u) => u.id === devUser?.id);
+
+      if (index < 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const emailConflict = _devUsers.some(
+        (u, idx) => idx !== index && String(u.email || '').toLowerCase() === nextEmail
+      );
+      if (emailConflict) {
+        return res.status(409).json({ message: 'Email already in use' });
+      }
+
+      _devUsers[index] = {
+        ..._devUsers[index],
+        name: nextName,
+        email: nextEmail
+      };
+
+      return res.json({
+        id: _devUsers[index].id,
+        name: _devUsers[index].name,
+        email: _devUsers[index].email,
+        role: _devUsers[index].role,
+        passwordConfigured: Boolean(_devUsers[index].password),
+        source: 'dev'
+      });
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const existing = await User.findOne({ email: nextEmail, _id: { $ne: user._id } }).select('_id');
+    if (existing) {
+      return res.status(409).json({ message: 'Email already in use' });
+    }
+
+    user.name = nextName;
+    user.email = nextEmail;
+    await user.save();
+
+    return res.json({
+      id: String(user._id),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      passwordConfigured: true,
+      source: 'db'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function changeMyPassword(req, res, next) {
+  try {
+    const currentPassword = String(req.body?.currentPassword || '');
+    const newPassword = String(req.body?.newPassword || '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ message: 'New password must be different from current password' });
+    }
+
+    if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+      const devUser = await ensureDevSelfUser(req.user);
+      const index = _devUsers.findIndex((u) => u.id === devUser?.id);
+
+      if (index < 0) {
+        return res.status(404).json({ message: 'User not found in dev store' });
+      }
+
+      const validCurrent = await bcrypt.compare(currentPassword, _devUsers[index].password || '');
+      if (!validCurrent) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      _devUsers[index].password = await bcrypt.hash(newPassword, 10);
+      return res.json({ message: 'Password updated successfully' });
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const validCurrent = await bcrypt.compare(currentPassword, user.password);
+    if (!validCurrent) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    return res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  register,
+  login,
+  listUsers,
+  resetUserPassword,
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword
+};
 

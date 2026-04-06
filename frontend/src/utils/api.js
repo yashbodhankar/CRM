@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+const HOSTED_BACKEND_ORIGIN = 'https://crm-1-zirz.onrender.com';
 const LOCAL_API_CANDIDATES = ['http://localhost:5003', 'http://localhost:5000'];
 export const AUTH_INVALID_EVENT = 'crm:auth-invalid';
 
@@ -18,6 +19,14 @@ function resolveBaseUrl() {
   if (import.meta.env.VITE_API_URL) {
     return toApiBaseUrl(import.meta.env.VITE_API_URL);
   }
+
+  const host = typeof window !== 'undefined'
+    ? String(window.location?.hostname || '').toLowerCase()
+    : '';
+  if (host && host !== 'localhost' && host !== '127.0.0.1') {
+    return toApiBaseUrl(HOSTED_BACKEND_ORIGIN);
+  }
+
   return toApiBaseUrl(LOCAL_API_CANDIDATES[0]);
 }
 

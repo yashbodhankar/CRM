@@ -46,4 +46,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://crm-pro-backend.onrender.com
+        value: https://crm-1-zirz.onrender.com

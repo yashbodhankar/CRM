@@ -85,8 +85,19 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const syncUser = (next) => {
+    if (!next) return;
+    setUser((prev) => ({
+      ...(prev || {}),
+      id: next.id ?? prev?.id,
+      name: next.name ?? prev?.name,
+      email: next.email ?? prev?.email,
+      role: next.role ?? prev?.role
+    }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, syncUser }}>
       {children}
     </AuthContext.Provider>
   );
