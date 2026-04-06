@@ -69,7 +69,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Backward compatibility: support both /api/auth/* and legacy /api/* auth paths.
 app.use('/api/auth', authRoutes);
+app.use('/api', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/projects', projectRoutes);
