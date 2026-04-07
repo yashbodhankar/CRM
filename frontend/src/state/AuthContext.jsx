@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../utils/api';
 import { AUTH_INVALID_EVENT } from '../utils/api';
 
@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const { token } = res.data;
     localStorage.setItem('token', token);
@@ -78,14 +78,14 @@ export function AuthProvider({ children }) {
       throw new Error('Received an expired or invalid token. Please sign in again.');
     }
     setUser(toUser(payload));
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+  }, []);
 
-  const syncUser = (next) => {
+  const syncUser = useCallback((next) => {
     if (!next) return;
     setUser((prev) => ({
       ...(prev || {}),
@@ -94,10 +94,15 @@ export function AuthProvider({ children }) {
       email: next.email ?? prev?.email,
       role: next.role ?? prev?.role
     }));
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ user, login, logout, loading, syncUser }),
+    [user, login, logout, loading, syncUser]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, syncUser }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

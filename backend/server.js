@@ -4,6 +4,11 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const helmet = require('helmet');
+const compression = require('compression');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
 
 dotenv.config();
 
@@ -20,6 +25,7 @@ const aiRoutes = require('./src/routes/aiRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const analyticsRoutes = require('./src/routes/analyticsRoutes');
 const { errorHandler, notFound } = require('./src/middleware/errorMiddleware');
+const { apiLimiter } = require('./src/middleware/rateLimitMiddleware');
 const seedAdmin = require('./src/utils/seedAdmin');
 const { startAutomationScheduler } = require('./src/utils/automationScheduler');
 
@@ -36,13 +42,43 @@ function parseCorsOrigins(raw) {
 }
 
 const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://crm-f9ju.vercel.app'
+];
+const effectiveAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : defaultAllowedOrigins;
+
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  req.requestId = crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.requestId);
+  next();
+});
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 app.use(cors({
-  origin: "https://crm-f9ju.vercel.app", // your frontend URL
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    const normalized = String(origin).replace(/\/$/, '').toLowerCase();
+    if (effectiveAllowedOrigins.includes(normalized)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin not allowed by CORS'));
+  },
   credentials: true
 }));
 
-app.use(express.json());
+app.use(compression());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(morgan('dev'));
+app.use(apiLimiter);
+app.use(mongoSanitize());
+app.use(hpp());
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -61,7 +97,12 @@ if (!fs.existsSync(customerUploadDir)) fs.mkdirSync(customerUploadDir, { recursi
 app.use('/uploads', express.static(uploadRoot));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    uptimeSeconds: Math.round(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Backward compatibility: support both /api/auth/* and legacy /api/* auth paths.
@@ -82,6 +123,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+let server;
 
 async function start() {
   try {
@@ -98,7 +140,7 @@ async function start() {
       await connectDb();
       await seedAdmin();
     }
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`CRM Pro backend listening on http://localhost:${PORT}`);
     });
     startAutomationScheduler();
@@ -107,5 +149,33 @@ async function start() {
     process.exit(1);
   }
 }
+
+function shutdown(signal) {
+  console.log(`${signal} received. Starting graceful shutdown...`);
+  if (!server) {
+    process.exit(0);
+    return;
+  }
+
+  server.close(() => {
+    console.log('HTTP server closed. Exiting process.');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  shutdown('uncaughtException');
+});
 
 start();

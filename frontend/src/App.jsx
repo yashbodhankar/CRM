@@ -17,6 +17,7 @@ import LeadDashboard from './pages/LeadDashboard';
 import CustomerDashboard from './pages/CustomerDashboard';
 import Chat from './pages/Chat';
 import { useAuth } from './state/AuthContext';
+import ConnectionStatus from './components/ConnectionStatus';
 
 function App() {
   const { user } = useAuth();
@@ -30,109 +31,112 @@ function App() {
         : Dashboard;
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <DashboardPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/employees"
-        element={
-          <ProtectedRoute requiredPermissions={['employees:read']}>
-            <Layout>
-              <Employees />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/leads"
-        element={
-          <ProtectedRoute requiredPermissions={['leads:read']}>
-            <Layout>
-              <Leads />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/customers"
-        element={
-          <ProtectedRoute requiredPermissions={['customers:read']}>
-            <Layout>
-              <Customers />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/deals"
-        element={
-          <ProtectedRoute requiredPermissions={['deals:read']}>
-            <Layout>
-              <Deals />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects"
-        element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'lead', 'employee', 'customer']}>
-            <Layout>
-              <Projects />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tasks"
-        element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'lead', 'employee']}>
-            <Layout>
-              <Tasks />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute requiredPermissions={['analytics:read']}>
-            <Layout>
-              <Reports />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Profile />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Chat />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DashboardPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/employees"
+          element={
+            <ProtectedRoute requiredPermissions={['employees:read']}>
+              <Layout>
+                <Employees />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leads"
+          element={
+            <ProtectedRoute requiredPermissions={['leads:read']}>
+              <Layout>
+                <Leads />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute requiredPermissions={['customers:read']}>
+              <Layout>
+                <Customers />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/deals"
+          element={
+            <ProtectedRoute requiredPermissions={['deals:read']}>
+              <Layout>
+                <Deals />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'lead', 'employee', 'customer']}>
+              <Layout>
+                <Projects />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'lead', 'employee']}>
+              <Layout>
+                <Tasks />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute requiredPermissions={['analytics:read']}>
+              <Layout>
+                <Reports />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Chat />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+      <ConnectionStatus />
+    </>
   );
 }
 

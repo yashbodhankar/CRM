@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 
 let _devUsers = [];
 
-async function upsertDevUser({ name, email, password, role }) {
+async function upsertDevUser({ name, email, password, role, avatarUrl }) {
   const hashed = await bcrypt.hash(password, 10);
   const existingIdx = _devUsers.findIndex((u) => u.email === email);
   const next = {
@@ -10,7 +10,8 @@ async function upsertDevUser({ name, email, password, role }) {
     name,
     email,
     role,
-    password: hashed
+    password: hashed,
+    avatarUrl: avatarUrl || (existingIdx >= 0 ? _devUsers[existingIdx].avatarUrl : '') || ''
   };
 
   if (existingIdx >= 0) {

@@ -9,7 +9,10 @@ function ProtectedRoute({ children, allowedRoles, requiredPermissions }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
-        Loading...
+        <div className="flex items-center gap-3 text-sm">
+          <span className="h-4 w-4 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" aria-hidden="true" />
+          <span>Preparing your workspace...</span>
+        </div>
       </div>
     );
   }

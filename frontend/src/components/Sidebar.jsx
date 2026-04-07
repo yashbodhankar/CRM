@@ -44,15 +44,15 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   return (
     <>
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`fixed md:static z-40 top-0 left-0 h-full md:h-auto w-60 border-r px-4 py-6 transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'}`}>
+      <aside className={`fixed md:static z-40 top-0 left-0 h-full md:h-auto w-64 border-r px-4 py-6 transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} ${isLight ? 'bg-white/80 border-slate-200/80 backdrop-blur' : 'bg-slate-950/75 border-slate-700/50 backdrop-blur'}`}>
       <div className="mb-8">
-        <div className="flex items-center gap-2 text-primary-400 font-semibold text-lg">
-          <img src={logo} alt="CRM Pro logo" className="h-8 w-8 rounded-xl object-cover" />
-          <span>CRM Pro</span>
+        <div className="flex items-center gap-2 font-semibold text-lg">
+          <img src={logo} alt="CRM Pro logo" className="h-9 w-9 rounded-xl object-cover ring-2 ring-sky-400/40" />
+          <span className={isLight ? 'text-slate-800' : 'text-slate-100'}>CRM Pro</span>
         </div>
-        <p className="text-xs text-slate-400 mt-1">Team & customer insights</p>
+        <p className="text-xs text-slate-400 mt-1">Team and customer command center</p>
       </div>
-      <nav className="space-y-1">
+      <nav className="space-y-1.5">
         {visibleLinks.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -60,12 +60,14 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
             end={to === '/'}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+              `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all border ${
                 isActive
-                  ? 'bg-primary-500/10 text-primary-100'
+                  ? isLight
+                    ? 'bg-sky-100 text-sky-700 border-sky-200 shadow-sm'
+                    : 'bg-sky-500/15 text-sky-200 border-sky-400/30'
                   : isLight
-                    ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'text-slate-700 border-transparent hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-300 border-transparent hover:bg-slate-800 hover:text-white'
               }`
             }
           >
@@ -74,6 +76,10 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
           </NavLink>
         ))}
       </nav>
+
+      <div className={`mt-8 rounded-xl border px-3 py-2 text-xs ${isLight ? 'border-slate-200 bg-slate-100 text-slate-600' : 'border-slate-700 bg-slate-900/70 text-slate-300'}`}>
+        Logged in as <span className="font-semibold capitalize">{role || 'guest'}</span>
+      </div>
       </aside>
     </>
   );

@@ -3,6 +3,7 @@ const ChatMessage = require('../models/ChatMessage');
 const Project = require('../models/Project');
 
 let _devMessages = [];
+const _typingState = new Map();
 
 function normalizeCustomerRoomId(customerEmail, leadEmail) {
   const customer = (customerEmail || '').trim().toLowerCase();
@@ -76,6 +77,64 @@ function canAccessRoom(user, roomId) {
   return false;
 }
 
+function setTypingUser(roomId, user, isTyping) {
+  const key = String(roomId || '');
+  if (!key) return;
+
+  const existing = _typingState.get(key) || new Map();
+  const userKey = String(user?.email || user?.id || '').toLowerCase();
+  if (!userKey) return;
+
+  if (!isTyping) {
+    existing.delete(userKey);
+  } else {
+    existing.set(userKey, {
+      id: String(user?.id || userKey),
+      email: user?.email || '',
+      name: user?.name || 'User',
+      role: user?.role || '',
+      updatedAt: Date.now()
+    });
+  }
+
+  if (existing.size === 0) {
+    _typingState.delete(key);
+  } else {
+    _typingState.set(key, existing);
+  }
+}
+
+function getTypingUsers(roomId, currentUser) {
+  const roomMap = _typingState.get(String(roomId || '')) || new Map();
+  const now = Date.now();
+  const maxAgeMs = 5000;
+  const currentKey = String(currentUser?.email || currentUser?.id || '').toLowerCase();
+  const active = [];
+
+  for (const [key, value] of roomMap.entries()) {
+    if (!value || now - Number(value.updatedAt || 0) > maxAgeMs) {
+      roomMap.delete(key);
+      continue;
+    }
+    if (key === currentKey) {
+      continue;
+    }
+
+    active.push({
+      id: value.id,
+      email: value.email,
+      name: value.name,
+      role: value.role
+    });
+  }
+
+  if (roomMap.size === 0) {
+    _typingState.delete(String(roomId || ''));
+  }
+
+  return active;
+}
+
 async function listMessages(req, res, next) {
   try {
     const roomId = req.query.roomId;
@@ -123,14 +182,57 @@ async function createMessage(req, res, next) {
     if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
       const msg = { _id: `dev_${Date.now()}`, ...payload, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       _devMessages.push(msg);
+      setTypingUser(roomId, req.user, false);
       return res.status(201).json(msg);
     }
 
     const message = await ChatMessage.create(payload);
+    setTypingUser(roomId, req.user, false);
     res.status(201).json(message);
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = { listRooms, listMessages, createMessage };
+async function updateTypingStatus(req, res, next) {
+  try {
+    const roomId = String(req.body?.roomId || '').trim();
+    const isTyping = Boolean(req.body?.isTyping);
+
+    if (!roomId) {
+      return res.status(400).json({ message: 'roomId is required' });
+    }
+    if (!canAccessRoom(req.user, roomId)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    setTypingUser(roomId, req.user, isTyping);
+    return res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function listTypingUsers(req, res, next) {
+  try {
+    const roomId = String(req.query?.roomId || '').trim();
+    if (!roomId) {
+      return res.status(400).json({ message: 'roomId is required' });
+    }
+    if (!canAccessRoom(req.user, roomId)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    return res.json(getTypingUsers(roomId, req.user));
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  listRooms,
+  listMessages,
+  createMessage,
+  updateTypingStatus,
+  listTypingUsers
+};

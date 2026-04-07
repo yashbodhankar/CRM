@@ -62,6 +62,12 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 	- `PORT=5000`
 	- `JWT_SECRET=your_secret`
 	- `MONGODB_URI=your_mongodb_uri`
+	- `CORS_ORIGIN=http://localhost:5173,https://your-frontend-domain.com`
+	- Optional hardening/rate-limit overrides:
+		- `RATE_LIMIT_WINDOW_MS=900000`
+		- `RATE_LIMIT_MAX=300`
+		- `LOGIN_RATE_LIMIT_WINDOW_MS=600000`
+		- `LOGIN_RATE_LIMIT_MAX=8`
 	- Optional email config:
 		- `SMTP_HOST=smtp.yourprovider.com`
 		- `SMTP_PORT=587`
@@ -77,6 +83,7 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 2. `npm install`
 3. Optional `.env`:
 	- `VITE_API_URL=http://localhost:5000/api`
+	- `VITE_API_TIMEOUT_MS=15000`
 4. `npm run dev`
 
 ## Deployment
@@ -93,6 +100,11 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
   - `JWT_SECRET`
 	- `MONGODB_URI` (MongoDB Atlas recommended)
 	- `CORS_ORIGIN` (comma-separated allowed frontend origins, e.g. `https://crm-pro-frontend.onrender.com`)
+	- Optional rate-limit vars:
+		- `RATE_LIMIT_WINDOW_MS`
+		- `RATE_LIMIT_MAX`
+		- `LOGIN_RATE_LIMIT_WINDOW_MS`
+		- `LOGIN_RATE_LIMIT_MAX`
 	- `UPLOADS_DIR` (for persistent files, e.g. `/var/data/uploads` on Render)
   - Optional: `DISABLE_AUTH=false`
 	- Optional SMTP vars for email notifications

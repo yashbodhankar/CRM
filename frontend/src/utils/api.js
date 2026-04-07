@@ -31,7 +31,8 @@ function resolveBaseUrl() {
 }
 
 const api = axios.create({
-  baseURL: resolveBaseUrl()
+  baseURL: resolveBaseUrl(),
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000)
 });
 
 function shouldInvalidateAuth(error) {
@@ -61,6 +62,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  config.headers['X-Client-Request-Id'] = `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   return config;
 });
 
@@ -87,6 +89,13 @@ api.interceptors.response.use(
     const isLoginRequest = String(config?.url || '').includes('/auth/login');
     if (!isLoginRequest && shouldInvalidateAuth(error)) {
       emitAuthInvalid();
+    }
+
+    if (!error?.response) {
+      const fallbackMessage = 'Unable to reach server. Please check your connection and try again.';
+      error.userMessage = error.code === 'ECONNABORTED'
+        ? 'Request timed out. Please try again.'
+        : fallbackMessage;
     }
 
     return Promise.reject(error);

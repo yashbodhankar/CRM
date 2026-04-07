@@ -107,7 +107,7 @@ function Dashboard() {
       if (isAdmin) {
         loadUsers();
       }
-    }, 7000);
+    }, 20000);
     return () => clearInterval(timer);
   }, [autoRefresh, isAdmin, loadStats, loadUsers]);
 

@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const User = require('../models/User');
 const {
   findDevUserByEmail,
@@ -41,20 +43,29 @@ async function register(req, res, next) {
       return res.status(503).json({ message: 'Database unavailable' });
     }
     const { name, email, password, role } = req.body;
-    if (!email || !password) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const plainPassword = String(password || '');
+
+    if (!normalizedEmail || !plainPassword) {
       return res.status(400).json({ message: 'Email and password are required' });
+    }
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ message: 'A valid email is required' });
+    }
+    if (plainPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
     const derivedName = String(name || '')
-      .trim() || String(email).split('@')[0] || 'User';
+      .trim() || normalizedEmail.split('@')[0] || 'User';
 
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(409).json({ message: 'Email already in use' });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name: derivedName, email, password: hashed, role });
+    const hashed = await bcrypt.hash(plainPassword, 10);
+    const user = await User.create({ name: derivedName, email: normalizedEmail, password: hashed, role });
 
     res.status(201).json({
       id: user._id,
@@ -69,7 +80,12 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
 
     // Dev-mode: allow login with generated credentials and keep admin bootstrap.
     if (process.env.DISABLE_AUTH === 'true') {
@@ -248,6 +264,7 @@ async function getMyProfile(req, res, next) {
         name: devUser.name,
         email: devUser.email,
         role: devUser.role,
+        avatarUrl: devUser.avatarUrl || '',
         passwordConfigured: Boolean(devUser.password),
         source: 'dev'
       });
@@ -263,6 +280,7 @@ async function getMyProfile(req, res, next) {
       name: user.name,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl || '',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       passwordConfigured: true,
@@ -311,6 +329,7 @@ async function updateMyProfile(req, res, next) {
         name: _devUsers[index].name,
         email: _devUsers[index].email,
         role: _devUsers[index].role,
+        avatarUrl: _devUsers[index].avatarUrl || '',
         passwordConfigured: Boolean(_devUsers[index].password),
         source: 'dev'
       });
@@ -335,10 +354,97 @@ async function updateMyProfile(req, res, next) {
       name: user.name,
       email: user.email,
       role: user.role,
+      avatarUrl: user.avatarUrl || '',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       passwordConfigured: true,
       source: 'db'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function uploadMyAvatar(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Avatar file is required' });
+    }
+
+    const mime = String(req.file.mimetype || '').toLowerCase();
+    if (!mime.startsWith('image/')) {
+      return res.status(400).json({ message: 'Only image files are allowed' });
+    }
+
+    const uploadRoot = process.env.UPLOADS_DIR
+      ? path.resolve(process.env.UPLOADS_DIR)
+      : path.join(process.cwd(), 'uploads');
+    const profileDir = path.join(uploadRoot, 'profiles');
+
+    if (!fs.existsSync(profileDir)) {
+      fs.mkdirSync(profileDir, { recursive: true });
+    }
+
+    const extension = mime.includes('png')
+      ? 'png'
+      : mime.includes('webp')
+        ? 'webp'
+        : mime.includes('gif')
+          ? 'gif'
+          : 'jpg';
+    const safeId = String(req.user?.id || 'user').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fileName = `${safeId}_${Date.now()}.${extension}`;
+    const targetPath = path.join(profileDir, fileName);
+    fs.writeFileSync(targetPath, req.file.buffer);
+    const avatarUrl = `/uploads/profiles/${fileName}`;
+
+    if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+      const devUser = await ensureDevSelfUser(req.user);
+      const index = _devUsers.findIndex((u) => u.id === devUser?.id);
+      if (index < 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      _devUsers[index] = {
+        ..._devUsers[index],
+        avatarUrl
+      };
+
+      return res.json({
+        message: 'Avatar uploaded successfully',
+        avatarUrl,
+        profile: {
+          id: _devUsers[index].id,
+          name: _devUsers[index].name,
+          email: _devUsers[index].email,
+          role: _devUsers[index].role,
+          avatarUrl: _devUsers[index].avatarUrl,
+          source: 'dev'
+        }
+      });
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.avatarUrl = avatarUrl;
+    await user.save();
+
+    return res.json({
+      message: 'Avatar uploaded successfully',
+      avatarUrl,
+      profile: {
+        id: String(user._id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        source: 'db'
+      }
     });
   } catch (err) {
     next(err);
@@ -402,6 +508,7 @@ module.exports = {
   resetUserPassword,
   getMyProfile,
   updateMyProfile,
-  changeMyPassword
+  changeMyPassword,
+  uploadMyAvatar
 };
 
