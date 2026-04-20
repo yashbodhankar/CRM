@@ -16,7 +16,6 @@ notifications, and document management.
   - src/
     - config/db.js
     - controllers/
-      aiController.js
       analyticsController.js
       authController.js
       chatController.js
@@ -41,7 +40,6 @@ notifications, and document management.
       Task.js
       User.js
     - routes/
-      aiRoutes.js
       analyticsRoutes.js
       authRoutes.js
       chatRoutes.js
@@ -126,7 +124,6 @@ notifications, and document management.
 - /api/customers
 - /api/deals
 - /api/chat
-- /api/ai
 - /api/notifications
 - /api/analytics
 
@@ -213,7 +210,7 @@ Main backend access rules by module:
 - Tasks (/api/tasks):
   - create/delete: admin/manager/lead
   - update: admin/manager/lead/employee
-- AI tools (/api/ai): admin/manager/sales/lead.
+- Lead scoring endpoint: admin/manager/sales/lead.
 
 12) Business Flow of the CRM
 Lead-to-Revenue flow:

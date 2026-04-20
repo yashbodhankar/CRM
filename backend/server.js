@@ -21,7 +21,6 @@ const taskRoutes = require('./src/routes/taskRoutes');
 const customerRoutes = require('./src/routes/customerRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
 const dealRoutes = require('./src/routes/dealRoutes');
-const aiRoutes = require('./src/routes/aiRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const analyticsRoutes = require('./src/routes/analyticsRoutes');
 const { errorHandler, notFound } = require('./src/middleware/errorMiddleware');
@@ -115,7 +114,6 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/ai', aiRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 

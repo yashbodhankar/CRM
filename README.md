@@ -49,8 +49,7 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 - Backend static file hosting for uploads
 - Environment-ready API base URL
 
-10. AI Bonus Hooks
-- Lead scoring endpoint (`GET /api/leads/:id/score`)
+10. Lead scoring endpoint (`GET /api/leads/:id/score`)
 
 ## Local Run
 
@@ -84,6 +83,7 @@ Modern CRM platform with role-based access, analytics, workflow automation, noti
 3. Optional `.env`:
 	- `VITE_API_URL=http://localhost:5000/api`
 	- `VITE_API_TIMEOUT_MS=15000`
+
 4. `npm run dev`
 
 ## Deployment
