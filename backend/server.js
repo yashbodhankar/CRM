@@ -95,6 +95,10 @@ if (!fs.existsSync(customerUploadDir)) fs.mkdirSync(customerUploadDir, { recursi
 
 app.use('/uploads', express.static(uploadRoot));
 
+app.get('/version', (req, res) => {
+  res.send('NEW DEPLOY WORKING - April 20 2026');
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
