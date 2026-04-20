@@ -60,14 +60,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    const normalized = String(origin).replace(/\/$/, '').toLowerCase();
-    if (effectiveAllowedOrigins.includes(normalized)) {
-      return callback(null, true);
-    }
-    return callback(new Error('Origin not allowed by CORS'));
-  },
+  origin: true,
   credentials: true
 }));
 
