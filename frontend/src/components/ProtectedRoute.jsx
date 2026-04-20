@@ -22,11 +22,11 @@ function ProtectedRoute({ children, allowedRoles, requiredPermissions }) {
   }
 
   if (Array.isArray(allowedRoles) && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (Array.isArray(requiredPermissions) && requiredPermissions.length > 0 && !canAccess(user.role, requiredPermissions)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

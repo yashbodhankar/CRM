@@ -12,7 +12,7 @@ function Navbar({ sidebarOpen, setSidebarOpen }) {
   const [showNotifications, setShowNotifications] = useState(false);
 
   const routeTitles = {
-    '/': 'Overview',
+    '/dashboard': 'Overview',
     '/employees': 'Employees',
     '/leads': 'Leads',
     '/customers': 'Customers',

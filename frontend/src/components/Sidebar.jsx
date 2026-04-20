@@ -17,7 +17,7 @@ import { useTheme } from '../state/ThemeContext';
 import logo from '../../Logo.png';
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: Squares2X2Icon },
+  { to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
   { to: '/employees', label: 'Employees', icon: UserGroupIcon },
   { to: '/leads', label: 'Leads', icon: ArrowTrendingUpIcon },
   { to: '/customers', label: 'Customers', icon: BuildingOffice2Icon },
@@ -34,11 +34,11 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const { isLight } = useTheme();
   const role = user?.role;
   const visibleLinks = role === 'employee'
-    ? links.filter((item) => ['/', '/projects', '/tasks', '/chat', '/profile'].includes(item.to))
+    ? links.filter((item) => ['/dashboard', '/projects', '/tasks', '/chat', '/profile'].includes(item.to))
     : role === 'lead'
-      ? links.filter((item) => ['/', '/employees', '/leads', '/customers', '/deals', '/tasks', '/projects', '/chat', '/reports', '/profile'].includes(item.to))
+      ? links.filter((item) => ['/dashboard', '/employees', '/leads', '/customers', '/deals', '/tasks', '/projects', '/chat', '/reports', '/profile'].includes(item.to))
       : role === 'customer'
-        ? links.filter((item) => ['/', '/projects', '/chat', '/profile'].includes(item.to))
+        ? links.filter((item) => ['/dashboard', '/projects', '/chat', '/profile'].includes(item.to))
       : links;
 
   return (
@@ -57,7 +57,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all border ${

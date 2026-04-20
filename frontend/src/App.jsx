@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
@@ -16,6 +16,7 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import LeadDashboard from './pages/LeadDashboard';
 import CustomerDashboard from './pages/CustomerDashboard';
 import Chat from './pages/Chat';
+import Landing from './pages/Landing';
 import { useAuth } from './state/AuthContext';
 import ConnectionStatus from './components/ConnectionStatus';
 
@@ -33,9 +34,10 @@ function App() {
   return (
     <>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Layout>
@@ -134,6 +136,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ConnectionStatus />
     </>
