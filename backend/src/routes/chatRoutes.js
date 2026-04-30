@@ -5,7 +5,8 @@ const {
 	listMessages,
 	createMessage,
 	updateTypingStatus,
-	listTypingUsers
+	listTypingUsers,
+	clearMessages
 } = require('../controllers/chatController');
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get('/messages', auth(), listMessages);
 router.post('/messages', auth(), createMessage);
 router.get('/typing', auth(), listTypingUsers);
 router.post('/typing', auth(), updateTypingStatus);
+router.post('/messages/clear', auth(), clearMessages);
 
 module.exports = router;

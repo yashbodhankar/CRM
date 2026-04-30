@@ -229,10 +229,33 @@ async function listTypingUsers(req, res, next) {
   }
 }
 
+  async function clearMessages(req, res, next) {
+    try {
+      const roomId = String(req.body?.roomId || '').trim();
+      if (!roomId) return res.status(400).json({ message: 'roomId is required' });
+
+      if (!canAccessRoom(req.user, roomId)) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+
+      if (process.env.DISABLE_AUTH === 'true' || mongoose.connection.readyState !== 1) {
+        _devMessages = _devMessages.filter((m) => m.roomId !== roomId);
+        return res.json({ ok: true });
+      }
+
+      await ChatMessage.deleteMany({ roomId });
+      return res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+
 module.exports = {
   listRooms,
   listMessages,
   createMessage,
   updateTypingStatus,
   listTypingUsers
+  ,
+  clearMessages
 };

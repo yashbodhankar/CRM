@@ -185,13 +185,32 @@ function Chat() {
             <h3 className="text-sm font-medium text-slate-200">{activeRoom?.name || 'Select a room'}</h3>
             <p className="text-[11px] text-slate-500">{activeRoom?.description || 'Messages refresh every 5 seconds'}</p>
           </div>
-          <button
-            onClick={() => loadMessages(activeRoomId)}
-            disabled={!activeRoomId || loadingMessages}
-            className="rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs px-2 py-1"
-          >
-            {loadingMessages ? 'Refreshing...' : 'Refresh'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => loadMessages(activeRoomId)}
+              disabled={!activeRoomId || loadingMessages}
+              className="rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs px-2 py-1"
+            >
+              {loadingMessages ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              onClick={async () => {
+                if (!activeRoomId) return;
+                const ok = confirm('Clear all messages in this chat? This cannot be undone.');
+                if (!ok) return;
+                try {
+                  await api.post('/chat/messages/clear', { roomId: activeRoomId });
+                  await loadMessages(activeRoomId);
+                } catch (err) {
+                  setError(err?.response?.data?.message || 'Failed to clear messages');
+                }
+              }}
+              disabled={!activeRoomId}
+              className="rounded-md bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs px-2 py-1"
+            >
+              Clear Chat
+            </button>
+          </div>
         </div>
 
         {error && <div className="px-4 py-2 text-rose-400 text-xs border-b border-slate-800">{error}</div>}
