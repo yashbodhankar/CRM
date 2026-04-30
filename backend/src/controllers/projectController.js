@@ -606,7 +606,7 @@ async function submitProjectCompletion(req, res, next) {
         customerVerifiedAt: null
       };
       _devProjects[idx].status = 'ongoing';
-      await notifyUsers(['admin@example.com', _devProjects[idx].customerEmail].filter(Boolean), {
+      await notifyUsers([process.env.ADMIN_EMAIL, _devProjects[idx].customerEmail].filter(Boolean), {
         title: 'Project completion submitted',
         message: `Lead submitted ${_devProjects[idx].name || 'project'} for verification`,
         type: 'info',
@@ -640,7 +640,7 @@ async function submitProjectCompletion(req, res, next) {
     project.completion = completion;
     project.status = inferStatus(project.status, completion, project.completionReview);
     await project.save();
-    await notifyUsers(['admin@example.com', project.customerEmail].filter(Boolean), {
+    await notifyUsers([process.env.ADMIN_EMAIL, project.customerEmail].filter(Boolean), {
       title: 'Project completion submitted',
       message: `Lead submitted ${project.name || 'project'} for verification`,
       type: 'info',

@@ -20,6 +20,7 @@ const loginLimiter = rateLimit({
   max: LOGIN_MAX_ATTEMPTS,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.DISABLE_AUTH === 'true',
   skipSuccessfulRequests: true,
   message: {
     message: 'Too many login attempts. Please wait before retrying.'

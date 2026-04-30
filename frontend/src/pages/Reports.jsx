@@ -146,7 +146,7 @@ function Reports() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <KpiCard label="Active deals" value={kpis.activeDeals || 0} />
-        <KpiCard label="Won deal value" value={`$${(kpis.wonDealsValue || 0).toLocaleString()}`} />
+        <KpiCard label="Won deal value" value={`₹${(kpis.wonDealsValue || 0).toLocaleString()}`} />
         <KpiCard label="Overdue tasks" value={kpis.overdueTasks || 0} />
         <KpiCard label="Avg task completion (hrs)" value={advanced?.summary?.avgTaskCompletionHours || 0} />
       </div>
@@ -238,7 +238,7 @@ function Reports() {
               <div key={row.email} className="text-xs border border-slate-800 rounded-lg p-2 text-slate-300">
                 <p className="font-medium text-slate-200">{row.name} ({row.teamName})</p>
                 <p>Completed Tasks: {row.completedTasks}/{row.totalTasks}</p>
-                <p>Won Deal Value: ${Number(row.wonDealValue || 0).toLocaleString()}</p>
+                <p>Won Deal Value: ₹{Number(row.wonDealValue || 0).toLocaleString()}</p>
               </div>
             ))}
             {(advanced?.teamPerformance || []).length === 0 && <p className="text-xs text-slate-500">No team performance data.</p>}

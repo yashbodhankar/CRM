@@ -120,7 +120,7 @@ async function createLead(req, res, next) {
     }
 
     const lead = await Lead.create(payload);
-    await notifyUsers(['admin@example.com', req.user?.email].filter(Boolean), {
+    await notifyUsers([process.env.ADMIN_EMAIL, req.user?.email].filter(Boolean), {
       title: 'New lead created',
       message: `Lead ${lead.customerName || lead.email || ''} added to pipeline`,
       type: 'info',

@@ -163,7 +163,7 @@ function Deals() {
                       className="rounded-lg border border-slate-800 p-2 bg-slate-950/60 cursor-grab active:cursor-grabbing"
                     >
                       <p className="text-xs text-slate-100 font-medium">{deal.title}</p>
-                      <p className="text-[11px] text-slate-400">Value: ${(deal.value || 0).toLocaleString()}</p>
+                      <p className="text-[11px] text-slate-400">Value: ₹{(deal.value || 0).toLocaleString()}</p>
                       <p className="text-[11px] text-slate-500">Updated: {new Date(deal.updatedAt).toLocaleDateString()}</p>
                       <div className="mt-2">
                         <button onClick={() => deleteDeal(deal._id)} className="text-[11px] px-2 py-1 rounded bg-rose-700 text-white">Delete</button>

@@ -6,14 +6,14 @@ import logo from '../../Logo.png';
 const plans = [
   {
     name: 'Starter',
-    price: '$29',
+    price: '₹29',
     period: '/month',
     description: 'For small teams that need a reliable CRM baseline.',
     features: ['Up to 5 users', 'Lead & customer tracking', 'Task and project boards', 'Email support']
   },
   {
     name: 'Growth',
-    price: '$79',
+    price: '₹79',
     period: '/month',
     description: 'Best for scaling sales and service operations.',
     features: ['Up to 25 users', 'Advanced analytics', 'Workflow automation', 'Priority support'],
@@ -21,7 +21,7 @@ const plans = [
   },
   {
     name: 'Enterprise',
-    price: '$199',
+    price: '₹199',
     period: '/month',
     description: 'For large organizations with security and control needs.',
     features: ['Unlimited users', 'Role-based governance', 'Dedicated success manager', 'Custom integrations']
@@ -259,7 +259,7 @@ function Landing() {
                 Share your current process and team size. We will recommend the right package, setup path, and migration checklist.
               </p>
               <div className="mt-6 space-y-3 text-sm text-slate-200">
-                <p className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-emerald-300" /> +91 90000 11223</p>
+                <p className="flex items-center gap-2"><PhoneCall className="h-4 w-4 text-emerald-300" /> +91 9420056041</p>
                 <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-emerald-300" /> sales@crmpro.app</p>
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-300" /> Pune, Maharashtra, India</p>
               </div>

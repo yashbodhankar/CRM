@@ -128,7 +128,10 @@ async function login(req, res, next) {
         return res.json({ token });
       }
 
-      // If dev creds not present or don't match, fall through to DB check (if available)
+      // In dev-auth mode, avoid DB dependency entirely.
+      return res.status(401).json({
+        message: 'Invalid credentials. In dev mode, use generated login from Employees/Customers pages or admin dev credentials.'
+      });
     }
 
     if (mongoose.connection.readyState !== 1) {
